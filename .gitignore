@@ -1,0 +1,53 @@
+# Ignorar directorios de compilación
+build/
+devel/
+logs/
+
+# Ignorar todos los archivos de texto que contienen información de configuración personalizada
+*.user
+*.config
+
+# Ignorar archivos temporales que pueden ser generados por editores o IDEs
+*~
+*.swp
+*.tmp
+
+# Ignorar archivos de paquete y de espacio de trabajo
+*.lock
+
+# Ignorar archivos específicos de Python
+*.pyc
+__pycache__/
+
+# Ignorar archivos de backup
+*.bak
+
+# Ignorar archivos y carpetas relacionados con el entorno virtual de Python
+venv/
+*.venv
+env/
+*.env
+
+# Ignorar archivos específicos de ROS
+*.bag
+*.bag.active
+*.bag.orig
+
+# Ignorar archivos y carpetas generados por herramientas de documentación como Doxygen
+doc/
+html/
+latex/
+
+# Ignorar archivos específicos de IDEs y editores
+.vscode/
+.idea/
+*.sublime-workspace
+
+# Ignorar archivos generados por el sistema
+.DS_Store
+Thumbs.db
+
+# Ignorar archivos específicos de otros sistemas de compilación
+CMakeLists.txt.user
+*.kep
+.catkin_tools
