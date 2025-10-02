@@ -1,0 +1,8 @@
+prefix=/home/robotica_tiago/carpeta_compartida/psico_ws/install
+
+Name: RPI_pkg
+Description: Description of RPI_pkg
+Version: 0.0.0
+Cflags: 
+Libs: -L${prefix}/lib 
+Requires: 

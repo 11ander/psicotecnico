@@ -1,0 +1,2 @@
+- setup-file:
+    local-name: /home/robotica_tiago/carpeta_compartida/psico_ws/install/setup.sh

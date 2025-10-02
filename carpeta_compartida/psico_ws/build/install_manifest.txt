@@ -1,0 +1,11 @@
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/_setup_util.py
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/env.sh
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/setup.bash
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/local_setup.bash
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/setup.sh
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/local_setup.sh
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/setup.zsh
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/local_setup.zsh
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/setup.fish
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/local_setup.fish
+/home/robotica_tiago/carpeta_compartida/psico_ws/install/.rosinstall
