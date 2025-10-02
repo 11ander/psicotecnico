@@ -1,0 +1,4 @@
+git add fichero.py
+git commit -m "nombre"
+git pull origin main --rebase
+git push origin main
