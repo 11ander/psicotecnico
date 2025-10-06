@@ -19,7 +19,7 @@ RUN apt update && apt install -y rviz \
          htop \
          sudo \
          libxmlrpc-core-c3-dev
-
+         
 RUN pip install catkin_tools \
                 tensorboard \
                 opencv-python
