@@ -3,17 +3,21 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    container_name: ros1_robotica_tiago
     privileged: true
     ipc: host
     network_mode: host
     environment:
-      - DISPLAY=$DISPLAY
+      - DISPLAY=${DISPLAY}
+      - QT_X11_NO_MITSHM=1
+      - XAUTHORITY=${XAUTHORITY}
     volumes:
-      - ${XAUTHORITY:-0}:/root/.Xauthority
-      - /tmp/.X11-unix:/tmp/.X11-unix
-      - ./carpeta_compartida:/home/robotica_tiago/carpeta_compartida
+      - ${XAUTHORITY}:${XAUTHORITY}:ro
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+      - ./carpeta_compartida:/home/robotica_tiago/carpeta_compartida:rw
       - /dev:/dev
     devices:
       - /dev/dri:/dev/dri
     tmpfs:
       - /dev/shm:rw
+    user: "1000:1000"   # asegura que coincida con tu usuario del host (UID/GID 1000 por defecto)
