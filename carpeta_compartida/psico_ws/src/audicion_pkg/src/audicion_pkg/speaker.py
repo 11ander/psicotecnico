@@ -3,7 +3,6 @@
 import rospy
 from pal_interaction_msgs.msg import TtsAction, TtsGoal
 import actionlib
-from random import choice
 
 class TiagoSpeaker():
     def __init__(self):
@@ -20,7 +19,9 @@ class TiagoSpeaker():
         goal.rawtext.text = text
         goal.rawtext.lang_id = "en_ES"
         self.tts_client.send_goal_and_wait(goal, rospy.Duration(duration), rospy.Duration(duration))
+        rospy.loginfo(f"Beep enviado: '{text}'")
             
 if __name__ == '__main__':
     speaker = TiagoSpeaker()
-    speaker.speak("Hello, I am TIAGo, your personal robot assistant.")
+    for i in range(10):
+        speaker.speak("beep",duration=0.15)
