@@ -126,7 +126,7 @@ def test():
             setText("FIN DE LA PRUEBA DE REFLEJOS")  # Mensaje final cuando se pasan todos los niveles
 
     except KeyboardInterrupt:
-        setText("\nPrueba terminada.")
+        setText("\nPrueba terminada")
         for led in leds:
             led.off()
         zumbador.value = 0
