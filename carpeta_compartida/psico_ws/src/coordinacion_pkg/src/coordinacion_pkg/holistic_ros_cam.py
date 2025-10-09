@@ -170,3 +170,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+#Para lanzarlo: python holistic_ros_cam.py --topic /xtion/rgb/image_raw/compressed --compressed --fps_cap 25
