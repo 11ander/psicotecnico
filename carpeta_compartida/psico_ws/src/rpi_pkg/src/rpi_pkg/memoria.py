@@ -111,24 +111,27 @@ def test_niveles():
     global LONGITUD_SECUENCIA, RESULTADO_OK
     setText("PSICOTECNICO:\nPRUEBA MEMORIA")
     sleep(3)
+    puntuacion = 0
     for idx, pasos in enumerate(niveles):
-        LONGITUD_SECUENCIA = pasos   # fijamos la longitud de este nivel
-        intro(idx)                   # tu cuenta atrás y aviso
-        prueba()                     # tu lógica de secuencia/respuesta
+        LONGITUD_SECUENCIA = pasos
+        intro(idx)
+        prueba()
 
         if RESULTADO_OK is False:
             setText(f"Fallaste en\nnivel {idx + 1}")
             sleep(2)
             setText("Fin de la\nprueba")
-            return
+            return puntuacion
+        else:
+            puntuacion += 2
 
-
-    # Si supera todos los niveles
     setText("Superaste todos\nlos niveles!")
     zumbador.value = 1  
     sleep(2)  
     zumbador.value = 0
     setText("Fin de la\nprueba")
+    return puntuacion
 
 if __name__ == "__main__":
-    test_niveles()
+    nota = test_niveles()
+    print(nota)
