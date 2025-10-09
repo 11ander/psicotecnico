@@ -419,6 +419,12 @@ coordinacion_pkg_SOURCE_DIR:STATIC=/home/robotica_tiago/carpeta_compartida/psico
 cpp_common_DIR:PATH=/opt/ros/noetic/share/cpp_common/cmake
 
 //Value Computed by CMake
+face_recognition_pkg_BINARY_DIR:STATIC=/home/robotica_tiago/carpeta_compartida/psico_ws/build/face_recognition_pkg
+
+//Value Computed by CMake
+face_recognition_pkg_SOURCE_DIR:STATIC=/home/robotica_tiago/carpeta_compartida/psico_ws/src/face_recognition_pkg
+
+//Value Computed by CMake
 gmock_BINARY_DIR:STATIC=/home/robotica_tiago/carpeta_compartida/psico_ws/build/gtest/googlemock
 
 //Dependencies for the target
@@ -663,7 +669,7 @@ CMAKE_MODULE_LINKER_FLAGS_RELWITHDEBINFO-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_NM
 CMAKE_NM-ADVANCED:INTERNAL=1
 //number of local generators
-CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=9
+CMAKE_NUMBER_OF_MAKEFILES:INTERNAL=10
 //ADVANCED property for variable: CMAKE_OBJCOPY
 CMAKE_OBJCOPY-ADVANCED:INTERNAL=1
 //ADVANCED property for variable: CMAKE_OBJDUMP

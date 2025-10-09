@@ -146,6 +146,7 @@ endif()
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)
   # Include the install script for each subdirectory.
   include("/home/robotica_tiago/carpeta_compartida/psico_ws/build/gtest/cmake_install.cmake")
+  include("/home/robotica_tiago/carpeta_compartida/psico_ws/build/face_recognition_pkg/cmake_install.cmake")
   include("/home/robotica_tiago/carpeta_compartida/psico_ws/build/audicion_pkg/cmake_install.cmake")
   include("/home/robotica_tiago/carpeta_compartida/psico_ws/build/coordinacion_pkg/cmake_install.cmake")
   include("/home/robotica_tiago/carpeta_compartida/psico_ws/build/rpi_pkg/cmake_install.cmake")

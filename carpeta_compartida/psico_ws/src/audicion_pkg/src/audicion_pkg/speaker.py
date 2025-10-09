@@ -24,4 +24,4 @@ class TiagoSpeaker():
 if __name__ == '__main__':
     speaker = TiagoSpeaker()
     for i in range(10):
-        speaker.speak("beep",duration=0.15)
+        speaker.speak("beep",duration=2.0)

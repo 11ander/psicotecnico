@@ -5,6 +5,7 @@
 # This file includes the relevant testing commands required for 
 # testing this directory and lists subdirectories to be tested as well.
 subdirs("gtest")
+subdirs("face_recognition_pkg")
 subdirs("audicion_pkg")
 subdirs("coordinacion_pkg")
 subdirs("rpi_pkg")

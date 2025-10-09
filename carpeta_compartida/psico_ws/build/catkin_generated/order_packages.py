@@ -2,4 +2,4 @@
 source_root_dir = '/home/robotica_tiago/carpeta_compartida/psico_ws/src'
 whitelisted_packages = ''.split(';') if '' != '' else []
 blacklisted_packages = ''.split(';') if '' != '' else []
-underlay_workspaces = '/home/robotica_tiago/carpeta_compartida/psico_ws/devel;/opt/ros/noetic'.split(';') if '/home/robotica_tiago/carpeta_compartida/psico_ws/devel;/opt/ros/noetic' != '' else []
+underlay_workspaces = '/home/robotica_tiago/carpeta_compartida/gallium;/opt/ros/noetic'.split(';') if '/home/robotica_tiago/carpeta_compartida/gallium;/opt/ros/noetic' != '' else []
