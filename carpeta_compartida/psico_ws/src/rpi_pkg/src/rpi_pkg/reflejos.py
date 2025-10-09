@@ -100,36 +100,41 @@ def prueba(tiempo):
     return True 
 
 def test():
+    puntuacion = 0
 
     try:
         setText("PSICOTECNICO:   PRUEBA REFLEJOS ")
         sleep(3)
         for nivel in range(len(niveles)):
-            intro(nivel)  # Repite la introducción antes de cada nivel para darle tiempo al usuario
+            intro(nivel)  
 
             tiempo_limite = niveles[nivel]
 
             if not prueba(tiempo_limite):
                 setText(f"Has fallado en  el nivel {nivel + 1}.")  
                 sleep(2)
-                setText("FIN DE LA PRUEBA DE REFLEJOS")  # Mueve esto dentro del bloque if
-                break  # Salir del bucle si se falla en un nivel
+                setText("FIN DE LA PRUEBA DE REFLEJOS")
+                return puntuacion
             else:
                 setText(f"Bien hecho Nivel {nivel + 1} completado \n")
                 sleep(2)
+                puntuacion += 2
 
         else:
             setText("Superaste todos los niveles!")
             zumbador.value = 1  
             sleep(2)  
             zumbador.value = 0 
-            setText("FIN DE LA PRUEBA DE REFLEJOS")  # Mensaje final cuando se pasan todos los niveles
+            setText("FIN DE LA PRUEBA DE REFLEJOS")
+            return puntuacion
 
     except KeyboardInterrupt:
-        setText("\nPrueba terminada")
+        setText("\nPrueba terminada.")
         for led in leds:
             led.off()
         zumbador.value = 0
+        return puntuacion
 
 if __name__ == "__main__":
-    test()
+    nota = test()
+    print(nota)
