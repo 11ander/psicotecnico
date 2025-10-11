@@ -119,6 +119,11 @@ include_directories(
 # include
   ${catkin_INCLUDE_DIRS}
 )
+# === INSTALAR TU NODO PYTHON (aunque esté en src/rpi_pkg) ===
+catkin_install_python(PROGRAMS
+  src/rpi_pkg/estado_pulsador.py
+  DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
+)
 
 ## Declare a C++ library
 # add_library(${PROJECT_NAME}
