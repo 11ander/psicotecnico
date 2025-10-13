@@ -1,86 +1,77 @@
 #!/usr/bin/env python
 
-import random
-import rospy
-from std_msgs.msg import Int32, Bool, String
-from collections import deque
+import random, rospy
+from std_msgs.msg import Bool
 from speaker import TiagoSpeaker
-import json
 
-class PruebaAudicionUsuario(object):
-    def __init__(self):
-        # Inicializar Clase TiagoSpeaker para hablar con el TIAGo
-        self.tiago = TiagoSpeaker()
+SILENCIO, VENTANA = 0, 1
+
+class Prueba2:
+    def __init__(self, tiago=TiagoSpeaker):
+         # Inicializar Clase TiagoSpeaker para hablar con el TIAGo
+        self.tiago = tiago
 
         # Parametros de la prueba
-        self.num_beeps = random.randint(3, 8)
-        self.max_t_resp = 1.0 # Tiempo maximo que tiene el usuario para pulsar al oir el beep
+        self.num_beeps = random.randint(2, 8)
+        self.max_t_resp = rospy.Duration.from_sec(1.0) # Tiempo maximo que tiene el usuario para pulsar al oir el beep
 
         # Estado para lectura del pulsador
-        self.press_queue = deque()
-        self.ultimo_btn  = False
-        rospy.Subscriber('/usuario/pulsador', Bool, self.cb_pulsador)
+        self.ultima_lectura_pulsador = False
+        self.pulso = False # Para no contar dos veces el mismo flanco dentro del modo
+        rospy.Subscriber('rpi/button6/pressed', Bool, self.callback_boton)
 
-        rospy.loginfo("PRUEBA 2 lista: num_beeps=%d",self.num_beeps)
+        # Preparar modo --- x segundos para pulsar al escuchas | y segundos para comprobar errores de pulsacion sin hablar
+        self.modo = SILENCIO
+        self.tiempo_salida = rospy.Time.now() + rospy.Duration.from_sec(random.uniform(0.6, 5.0))
+        self.beep_actual = 1
 
-    def cb_pulsador(self, msg):
-        val = bool(msg.data)
-        if val and not self.ultimo_btn:  # flanco de subida
-            self.press_queue.append(rospy.Time.now())
-        self.ultimo_btn = val
+        # Resultados de la prueba
+        self.aciertos = 0
+        self.fallos = 0
 
-    def esperar_pulsacion(self, t_inicio, ventana):
-        """Espera hasta 'ventana' s por una pulsación >= t_inicio. Devuelve (ok, dt)."""
-        rate = rospy.Rate(200)
-        deadline = t_inicio + rospy.Duration.from_sec(ventana)
-        while not rospy.is_shutdown() and rospy.Time.now() < deadline:
-            # descarta pulsaciones previas al beep
-            while self.press_queue and (self.press_queue[0] - t_inicio).to_sec() < 0:
-                self.press_queue.popleft()
-            if self.press_queue:
-                t_press = self.press_queue.popleft()
-                dt = (t_press - t_inicio).to_sec()
-                if 0 <= dt <= ventana:
-                    return True, dt
+    def callback_boton(self, msg):
+        pulsador = bool(msg.data)
+        if pulsador and not self.ultima_lectura_pulsador: # Flanco de subida del pulsador
+            self.pulso = True
+        self.ultima_lectura_pulsador = pulsador
+
+    def ejecucion(self):
+        rate = rospy.Rate(50) # Para controlar la velocidad de ejecución del bucle, es decir, para decirle a ROS: Ejecuta este bucle a 50 veces por segundo
+        while not rospy.is_shutdown() and self.beep_actual <= self.num_beeps:
+            now = rospy.Time.now()
+
+            if self.modo == SILENCIO:
+                # Pulsacion durante silencio = fallo
+                if self.pulso:
+                    self.fallos += 1
+                    self.pulso = False
+
+                # Fin del modo de silencio. Decir beep y pasar al modo de ventana
+                if now >= self.tiempo_salida:
+                    self.tiago.speak("beep")
+                    self.modo = VENTANA
+                    self.tiempo_salida = now + self.max_t_resp # Para cuando se debera salir del modo ventana
+
+            elif self.modo == VENTANA:  # VENTANA
+                # Pulsacion durante ventana = acierto
+                if self.pulso:
+                    self.aciertos += 1
+                    if self.tiempo_salida > now:
+                        rospy.sleep(self.tiempo_salida-now)
+
+                # Fin del modo de ventana. Pasar al modo de silencio
+                if now >= self.tiempo_salida or self.pulso:
+                    self.pulso = False
+                    self.beep_actual += 1
+                    self.modo = SILENCIO
+                    self.tiempo_salida = rospy.Time.now() + rospy.Duration.from_sec(random.uniform(0.6, 5.0)) # Para cuando se debera salir del modo silencio (el beep suena cada x tiempo aleatoriamente)
+            
             rate.sleep()
-        return False, None
 
-    def run(self):
-        aciertos, omisiones = 0, 0
-
-        for i in range(1, self.num_beeps + 1):
-            # 1) emitir beep
-            t_beep = rospy.Time.now()
-            try:
-                self.tiago.speak("beep", timeout=5.0)   # si tu speak usa timeout
-            except TypeError:
-                self.tiago.speak("beep", duration=0.6)  # fallback si usa duration
-
-            # 2) esperar respuesta del usuario
-            ok, dt = self.esperar_pulsacion(t_beep, self.max_t_resp)
-            if ok:
-                aciertos += 1
-                rospy.loginfo("Beep %d: Acierto (dt=%.3fs)", i, dt)
-            else:
-                omisiones += 1
-                rospy.loginfo("Beep %d: Omisión", i)
-
-            # 3) pausa entre beeps
-            rospy.sleep(random.uniform(0.6, 5.0))
-
-        # Devuelve (n_beeps, aciertos, fallos)
-        return self.num_beeps, aciertos, omisiones
-
-def main():
-    # NO llames a rospy.init_node aquí (lo hace TiagoSpeaker al construirse)
-    nodo = PruebaAudicionUsuario()
-    n_beeps, aciertos, fallos = nodo.run()
-    # imprimir también para verlo al ejecutar
-    print("RESULTADO -> beeps: %d, aciertos: %d, fallos: %d" % (n_beeps, aciertos, fallos))
-    return n_beeps, aciertos, fallos
-
+        return self.num_beeps, self.aciertos, self.fallos
+    
 if __name__ == '__main__':
-    try:
-        main()
-    except rospy.ROSInterruptException:
-        pass
+    tiago = TiagoSpeaker()
+    prueba = Prueba2(tiago)
+    [num_beeps, aciertos, fallos] = prueba.ejecucion()
+    print(f"Numero total de beeps: {num_beeps}\nNumero de aciertos: {aciertos}\nNumero de fallos: {fallos}")
