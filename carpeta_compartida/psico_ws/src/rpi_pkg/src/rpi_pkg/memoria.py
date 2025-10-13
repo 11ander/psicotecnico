@@ -107,7 +107,7 @@ def prueba():
     except KeyboardInterrupt:
         setText("Prueba\ninterrumpida")
 
-def test_niveles():
+def test_memoria():
     global LONGITUD_SECUENCIA, RESULTADO_OK
     setText("PSICOTECNICO:\nPRUEBA MEMORIA")
     sleep(3)
@@ -133,5 +133,5 @@ def test_niveles():
     return puntuacion
 
 if __name__ == "__main__":
-    nota = test_niveles()
+    nota = test_memoria()
     print(nota)

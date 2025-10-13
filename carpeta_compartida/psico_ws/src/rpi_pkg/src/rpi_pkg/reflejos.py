@@ -99,7 +99,7 @@ def prueba(tiempo):
 
     return True 
 
-def test():
+def test_reflejos():
     puntuacion = 0
 
     try:
@@ -136,5 +136,5 @@ def test():
         return puntuacion
 
 if __name__ == "__main__":
-    nota = test()
+    nota = test_reflejos()
     print(nota)
