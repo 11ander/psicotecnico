@@ -1,0 +1,8 @@
+# Goal
+bool ejecutar
+---
+# Result
+int32[4] resultados # [num_llamadas_p1, num_llamadas_p2, aciertos_p2, fallos_p2]
+---
+# Feedback
+# (vacio)

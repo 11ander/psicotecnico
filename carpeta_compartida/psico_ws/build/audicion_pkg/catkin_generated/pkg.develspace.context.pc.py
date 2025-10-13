@@ -1,8 +1,8 @@
 # generated from catkin/cmake/template/pkg.context.pc.in
 CATKIN_PACKAGE_PREFIX = ""
-PROJECT_PKG_CONFIG_INCLUDE_DIRS = "".split(';') if "" != "" else []
-PROJECT_CATKIN_DEPENDS = "".replace(';', ' ')
+PROJECT_PKG_CONFIG_INCLUDE_DIRS = "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/include".split(';') if "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/include" != "" else []
+PROJECT_CATKIN_DEPENDS = "rospy;std_msgs;actionlib;actionlib_msgs;message_runtime".replace(';', ' ')
 PKG_CONFIG_LIBRARIES_WITH_PREFIX = "".split(';') if "" != "" else []
 PROJECT_NAME = "audicion_pkg"
-PROJECT_SPACE_DIR = "/home/robotica_tiago/carpeta_compartida/psico_ws/devel"
+PROJECT_SPACE_DIR = "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg"
 PROJECT_VERSION = "0.0.0"

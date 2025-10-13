@@ -1,8 +1,1 @@
-prefix=/home/robotica_tiago/carpeta_compartida/psico_ws/devel
-
-Name: vision_pkg
-Description: Description of vision_pkg
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 
+/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/vision_pkg/lib/pkgconfig/vision_pkg.pc

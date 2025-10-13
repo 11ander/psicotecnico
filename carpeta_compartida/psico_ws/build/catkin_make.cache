@@ -1,2 +1,0 @@
-audicion_pkg:coordinacion_pkg:face_recognition_pkg:rpi_pkg:vision_pkg:web_server_pkg
--DCATKIN_DEVEL_PREFIX=/home/robotica_tiago/carpeta_compartida/psico_ws/devel -DCMAKE_INSTALL_PREFIX=/home/robotica_tiago/carpeta_compartida/psico_ws/install -G Unix Makefiles

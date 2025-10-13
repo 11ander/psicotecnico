@@ -3,7 +3,7 @@
 import rospy
 from std_msgs.msg import Int32MultiArray
 import random
-from speaker import TiagoSpeaker
+from audicion_pkg.speaker import TiagoSpeaker
 from prueba2 import Prueba2
 
 def prueba_audicion():
@@ -33,16 +33,18 @@ def prueba_audicion():
     [num_llamadas_p2, aciertos_p2, fallos_p2] = prueba2.ejecucion()
     print(f"Numero total de beeps: {num_llamadas_p2}\nNumero de aciertos_p2: {aciertos_p2}\nNumero de fallos_p2: {fallos_p2}")
     
+    return num_llamadas_p1, num_llamadas_p2, aciertos_p2, fallos_p2
+    
     ###### Crear publisher para mandar resultados de las pruebas ######
-    pub = rospy.Publisher('tiago/audicion/resultados', Int32MultiArray, queue_size=10)
-    rospy.sleep(1) # Dar tiempo a que el publisher se conecte
-    msg = Int32MultiArray() # Crear el mensaje a publicar
-    msg.data = [num_llamadas_p1, num_llamadas_p2, aciertos_p2, fallos_p2]
-    pub.publish(msg)
+    # pub = rospy.Publisher('tiago/audicion/resultados', Int32MultiArray, queue_size=10)
+    # rospy.sleep(1) # Dar tiempo a que el publisher se conecte
+    # msg = Int32MultiArray() # Crear el mensaje a publicar
+    # msg.data = [num_llamadas_p1, num_llamadas_p2, aciertos_p2, fallos_p2]
+    # pub.publish(msg)
 
 
 if __name__ == "__main__":
     try:
-        prueba_audicion()
+        [num_llamadas_p1, num_llamadas_p2, aciertos_p2, fallos_p2] = prueba_audicion()
     except rospy.ROSInterruptException:
         pass

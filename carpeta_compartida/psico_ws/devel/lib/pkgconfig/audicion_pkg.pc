@@ -1,8 +1,1 @@
-prefix=/home/robotica_tiago/carpeta_compartida/psico_ws/devel
-
-Name: audicion_pkg
-Description: Description of audicion_pkg
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 
+/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/lib/pkgconfig/audicion_pkg.pc
