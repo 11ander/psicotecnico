@@ -6,7 +6,7 @@ from grove_rgb_lcd import setText
 RESULTADO_OK = None
 LONGITUD_SECUENCIA = 1  # valor inicial, se reasigna en cada nivel
 
-# Configuración de LEDs, botones y zumbador
+# Configuración de LEDs, botones y zumbador.
 led1 = LED(5)
 led2 = LED(16)
 led3 = LED(18)
