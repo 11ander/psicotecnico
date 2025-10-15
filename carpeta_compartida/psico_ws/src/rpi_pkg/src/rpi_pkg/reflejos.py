@@ -1,7 +1,8 @@
+from rpi_pkg.grove_rgb_lcd import setText
 from gpiozero import LED, Button, PWMOutputDevice
 from random import choice
 from time import sleep, time
-from grove_rgb_lcd import setText
+#from grove_rgb_lcd import setText
 
 # Configuro los LEDs, pulsadores y zumbador
 led1 = LED(5)
