@@ -3,8 +3,8 @@
 import rospy
 from std_msgs.msg import Int32MultiArray
 import random
+from audicion_pkg.prueba2 import Prueba2
 from audicion_pkg.speaker import TiagoSpeaker
-from prueba2 import Prueba2
 
 def prueba_audicion():
     # Inicializar Clase TiagoSpeaker para hablar con el TIAGo

@@ -2,7 +2,7 @@
 
 import random, rospy
 from std_msgs.msg import Bool
-from speaker import TiagoSpeaker
+from audicion_pkg.speaker import TiagoSpeaker
 
 SILENCIO, VENTANA = 0, 1
 

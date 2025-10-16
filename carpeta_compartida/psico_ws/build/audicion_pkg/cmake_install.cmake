@@ -144,6 +144,10 @@ file(INSTALL DESTINATION "/home/robotica_tiago/carpeta_compartida/psico_ws/insta
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  include("/home/robotica_tiago/carpeta_compartida/psico_ws/build/audicion_pkg/catkin_generated/safe_execute_install.cmake")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/audicion_pkg/action" TYPE FILE FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/src/audicion_pkg/action/Audicion.action")
 endif()
 
@@ -184,7 +188,11 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/lib/python3/dist-packages/audicion_pkg")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/lib/python3/dist-packages/audicion_pkg" REGEX "/\\_\\_init\\_\\_\\.py$" EXCLUDE REGEX "/\\_\\_init\\_\\_\\.pyc$" EXCLUDE)
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/lib/python3/dist-packages/audicion_pkg" FILES_MATCHING REGEX "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/\\.private/audicion_pkg/lib/python3/dist-packages/audicion_pkg/.+/__init__.pyc?$")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
@@ -220,6 +228,10 @@ endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/audicion_pkg" TYPE PROGRAM FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/build/audicion_pkg/catkin_generated/installspace/speaker.py")
+endif()
+
+if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/audicion_pkg" TYPE PROGRAM FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/build/audicion_pkg/catkin_generated/installspace/cliente_action_audicion.py")
 endif()
 
 if(NOT CMAKE_INSTALL_LOCAL_ONLY)

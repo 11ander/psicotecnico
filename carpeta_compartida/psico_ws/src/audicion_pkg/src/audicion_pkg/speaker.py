@@ -6,7 +6,7 @@ import actionlib
 
 class TiagoSpeaker():
     def __init__(self):
-        rospy.init_node('tiago_speaker', anonymous=True)
+        # rospy.init_node('tiago_speaker', anonymous=True)
         # Cliente de Action para TTS
         self.tts_client = actionlib.SimpleActionClient('/tts', TtsAction)
         rospy.loginfo("Esperando TTS server...")
