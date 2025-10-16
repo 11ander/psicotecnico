@@ -14,8 +14,11 @@ catkin_python_setup()
 
 add_action_files(
   DIRECTORY action
-  FILES Reflejos.action
+  FILES
+    Reflejos.action
+    Memoria.action
 )
+
 
 generate_messages(
   DEPENDENCIES
@@ -37,6 +40,7 @@ include_directories(${catkin_INCLUDE_DIRS})
 
 catkin_install_python(PROGRAMS
   src/rpi_pkg/servidor_reflejos.py
+  src/rpi_pkg/servidor_memoria.py
   src/rpi_pkg/estado_pulsador.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )
