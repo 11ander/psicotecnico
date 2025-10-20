@@ -68,7 +68,7 @@ set(rpi_pkg_CONFIG_INCLUDED TRUE)
 # set variables for source/devel/install prefixes
 if("FALSE" STREQUAL "TRUE")
   set(rpi_pkg_SOURCE_PREFIX /home/robotica_tiago/carpeta_compartida/psico_ws/src/rpi_pkg)
-  set(rpi_pkg_DEVEL_PREFIX /home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg)
+  set(rpi_pkg_DEVEL_PREFIX /home/robotica_tiago/carpeta_compartida/psico_ws/devel)
   set(rpi_pkg_INSTALL_PREFIX "")
   set(rpi_pkg_PREFIX ${rpi_pkg_DEVEL_PREFIX})
 else()
@@ -91,9 +91,9 @@ endif()
 # flag project as catkin-based to distinguish if a find_package()-ed project is a catkin project
 set(rpi_pkg_FOUND_CATKIN_PROJECT TRUE)
 
-if(NOT " " STREQUAL " ")
+if(NOT "include " STREQUAL " ")
   set(rpi_pkg_INCLUDE_DIRS "")
-  set(_include_dirs "")
+  set(_include_dirs "include")
   if(NOT " " STREQUAL " ")
     set(_report "Check the issue tracker '' and consider creating a ticket if the problem has not been reported yet.")
   elseif(NOT " " STREQUAL " ")
@@ -156,7 +156,7 @@ foreach(library ${libraries})
     set(lib_path "")
     set(lib "${library}-NOTFOUND")
     # since the path where the library is found is returned we have to iterate over the paths manually
-    foreach(path /home/robotica_tiago/carpeta_compartida/psico_ws/install/lib;/home/robotica_tiago/carpeta_compartida/psico_ws/devel/lib;/home/robotica_tiago/carpeta_compartida/gallium/lib;/opt/ros/noetic/lib)
+    foreach(path /home/robotica_tiago/carpeta_compartida/psico_ws/install/lib;/home/robotica_tiago/carpeta_compartida/gallium/lib;/opt/ros/noetic/lib)
       find_library(lib ${library}
         PATHS ${path}
         NO_DEFAULT_PATH NO_CMAKE_FIND_ROOT_PATH)
@@ -179,7 +179,7 @@ foreach(library ${libraries})
   endif()
 endforeach()
 
-set(rpi_pkg_EXPORTED_TARGETS "")
+set(rpi_pkg_EXPORTED_TARGETS "rpi_pkg_generate_messages_cpp;rpi_pkg_generate_messages_eus;rpi_pkg_generate_messages_lisp;rpi_pkg_generate_messages_nodejs;rpi_pkg_generate_messages_py")
 # create dummy targets for exported code generation targets to make life of users easier
 foreach(t ${rpi_pkg_EXPORTED_TARGETS})
   if(NOT TARGET ${t})
@@ -187,7 +187,7 @@ foreach(t ${rpi_pkg_EXPORTED_TARGETS})
   endif()
 endforeach()
 
-set(depends "")
+set(depends "roscpp;rospy;std_msgs;actionlib;actionlib_msgs;message_runtime")
 foreach(depend ${depends})
   string(REPLACE " " ";" depend_list ${depend})
   # the package name of the dependency must be kept in a unique variable so that it is not overwritten in recursive calls
@@ -216,7 +216,7 @@ foreach(depend ${depends})
   _list_append_deduplicate(rpi_pkg_EXPORTED_TARGETS ${${rpi_pkg_dep}_EXPORTED_TARGETS})
 endforeach()
 
-set(pkg_cfg_extras "")
+set(pkg_cfg_extras "rpi_pkg-msg-extras.cmake")
 foreach(extra ${pkg_cfg_extras})
   if(NOT IS_ABSOLUTE ${extra})
     set(extra ${rpi_pkg_DIR}/${extra})

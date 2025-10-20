@@ -1,1 +1,8 @@
-/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/lib/pkgconfig/rpi_pkg.pc
+prefix=/home/robotica_tiago/carpeta_compartida/psico_ws/devel
+
+Name: rpi_pkg
+Description: Description of rpi_pkg
+Version: 0.0.0
+Cflags: -I/home/robotica_tiago/carpeta_compartida/psico_ws/devel/include
+Libs: -L${prefix}/lib 
+Requires: roscpp rospy std_msgs actionlib actionlib_msgs message_runtime

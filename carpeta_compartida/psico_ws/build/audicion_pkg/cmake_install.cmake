@@ -153,13 +153,13 @@ endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/audicion_pkg/msg" TYPE FILE FILES
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/share/audicion_pkg/msg/AudicionAction.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/share/audicion_pkg/msg/AudicionActionGoal.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/share/audicion_pkg/msg/AudicionActionResult.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/share/audicion_pkg/msg/AudicionActionFeedback.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/share/audicion_pkg/msg/AudicionGoal.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/share/audicion_pkg/msg/AudicionResult.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/share/audicion_pkg/msg/AudicionFeedback.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/audicion_pkg/msg/AudicionAction.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/audicion_pkg/msg/AudicionActionGoal.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/audicion_pkg/msg/AudicionActionResult.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/audicion_pkg/msg/AudicionActionFeedback.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/audicion_pkg/msg/AudicionGoal.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/audicion_pkg/msg/AudicionResult.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/audicion_pkg/msg/AudicionFeedback.msg"
     )
 endif()
 
@@ -168,31 +168,31 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/include/audicion_pkg")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/include/audicion_pkg")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/roseus/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/share/roseus/ros/audicion_pkg")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/roseus/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/roseus/ros/audicion_pkg")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/common-lisp/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/share/common-lisp/ros/audicion_pkg")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/common-lisp/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/common-lisp/ros/audicion_pkg")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/gennodejs/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/share/gennodejs/ros/audicion_pkg")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/gennodejs/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/gennodejs/ros/audicion_pkg")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  execute_process(COMMAND "/usr/bin/python3" -m compileall "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/lib/python3/dist-packages/audicion_pkg")
+  execute_process(COMMAND "/usr/bin/python3" -m compileall "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/lib/python3/dist-packages/audicion_pkg")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/lib/python3/dist-packages/audicion_pkg" REGEX "/\\_\\_init\\_\\_\\.py$" EXCLUDE REGEX "/\\_\\_init\\_\\_\\.pyc$" EXCLUDE)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/lib/python3/dist-packages/audicion_pkg" REGEX "/\\_\\_init\\_\\_\\.py$" EXCLUDE REGEX "/\\_\\_init\\_\\_\\.pyc$" EXCLUDE)
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/audicion_pkg/lib/python3/dist-packages/audicion_pkg" FILES_MATCHING REGEX "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/\\.private/audicion_pkg/lib/python3/dist-packages/audicion_pkg/.+/__init__.pyc?$")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/lib/python3/dist-packages/audicion_pkg" FILES_MATCHING REGEX "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/lib/python3/dist-packages/audicion_pkg/.+/__init__.pyc?$")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)

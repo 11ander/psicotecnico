@@ -1,0 +1,4 @@
+<launch>
+  <include file="$(find mover_pkg)/launch/gmapping.launch"/>
+  <include file="$(find mover_pkg)/launch/teleop_keyboard.launch"/>
+</launch>

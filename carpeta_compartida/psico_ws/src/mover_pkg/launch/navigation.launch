@@ -1,0 +1,7 @@
+<launch>
+  <!-- Ruta del mapa dentro del paquete -->
+  <arg name="map_yaml" default="$(find mover_pkg)/maps/mi_mapa.yaml"/>
+  <!-- Publica /map  -->
+  <node pkg="map_server" type="map_server" name="map_server"
+        args="$(arg map_yaml)" output="screen"/>
+</launch>

@@ -1,0 +1,12 @@
+###### installs ######
+sudo apt install ros-noetic-gmapping
+sudo apt install ros-noetic-slam-gmapping
+sudo apt install ros-noetic-teleop-twist-keyboard
+sudo apt install ros-noetic-map-server
+
+###### guardar mapa ######
+rosrun map_server map_saver -f path_maps_dir/nombre_mapa
+
+###### lanzar teleop ######
+source /opt/ros/noetic/setup.bash
+rosrun teleop_twist_keyboard teleop_twist_keyboard.py cmd_vel:=mobile_base_controller/cmd_vel
