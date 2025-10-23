@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="row g-4">
+  <div class="col-12 col-lg-8">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h5 class="card-title mb-3">Selecciona y ordena las pruebas</h5>
+        <p class="text-muted mb-4">
+          Arrastra para establecer el orden. Pulsa <span class="badge bg-primary">Empezar prueba</span> para ejecutar los Action Servers en ese orden.
+        </p>
+
+        <div class="row">
+          <div class="col-12 col-md-6">
+            <h6 class="mb-2">Pruebas disponibles</h6>
+            <ul id="availableList" class="list-group min-h-250">
+              {% for t in tests %}
+              <li class="list-group-item list-group-item-action d-flex justify-content-between align-items-center" data-key="{{ t.key }}">
+                <span>{{ t.display }}</span>
+                <span class="badge bg-secondary">Añadir</span>
+              </li>
+              {% endfor %}
+            </ul>
+            <div class="form-text">Haz clic o arrastra a la derecha para incluir.</div>
+          </div>
+
+          <div class="col-12 col-md-6">
+            <h6 class="mb-2">Orden de ejecución</h6>
+            <ul id="selectedList" class="list-group min-h-250">
+              <!-- Aquí se arrastran/añaden elementos -->
+            </ul>
+            <div class="form-text">Arrastra para reordenar. El primero se ejecuta antes.</div>
+          </div>
+        </div>
+
+        <div class="d-flex gap-2 mt-4">
+          <button id="btnStart" class="btn btn-primary px-4">
+            Empezar prueba
+          </button>
+          <button id="btnClear" class="btn btn-outline-secondary">
+            Limpiar selección
+          </button>
+        </div>
+
+        <div id="runState" class="mt-4" style="display:none;">
+          <div class="alert alert-info d-flex align-items-center" role="alert">
+            <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+            <div>
+              Ejecutando… <span id="runHint" class="fw-semibold"></span>
+            </div>
+          </div>
+
+          <div class="progress" role="progressbar" aria-valuemin="0" aria-valuemax="100">
+            <div id="progressBar" class="progress-bar" style="width: 0%">0%</div>
+          </div>
+
+          <ul id="logList" class="list-group list-group-flush mt-3 small">
+          </ul>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-lg-4">
+    <div class="card shadow-sm border-0">
+      <div class="card-body">
+        <h6 class="mb-2">Consejos</h6>
+        <ul class="small text-muted mb-0">
+          <li>Todos los Action Servers deben estar corriendo en el mismo host (Docker/ROS).</li>
+          <li>El Goal enviado es siempre <code>ejecutar=True</code>.</li>
+          <li>El resumen final mostrará todos los resultados recibidos.</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

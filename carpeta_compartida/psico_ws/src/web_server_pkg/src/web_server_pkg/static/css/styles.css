@@ -1,0 +1,4 @@
+/* styles.css */
+.min-h-250 { min-height: 250px; }
+.list-group-item { cursor: grab; }
+.list-group-item:active { cursor: grabbing; }

@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="card shadow-sm border-0">
+  <div class="card-body">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <h5 class="card-title mb-0">Glosario de resultados</h5>
+      <a href="{{ url_for('index') }}" class="btn btn-outline-secondary btn-sm">Volver</a>
+    </div>
+
+    <div class="text-muted small mb-3">
+      Job: <code>{{ job.job_id }}</code> &middot;
+      Inicio: {{ job.started_at }}{% if job.finished_at %} &middot; Fin: {{ job.finished_at }}{% endif %}
+    </div>
+
+    {% for key in job.order %}
+      {% set entry = job.results[key] %}
+      <div class="mb-4">
+        <h6 class="mb-2">{{ entry.test_display }}</h6>
+        <div class="p-3 border rounded bg-light">
+          {% if entry.ok %}
+            {% if entry.result is mapping %}
+              <ul class="mb-0">
+                {% for k, v in entry.result.items() %}
+                <li><strong>{{ k }}:</strong> {{ v }}</li>
+                {% endfor %}
+              </ul>
+            {% else %}
+              <pre class="mb-0">{{ entry.result | tojson(indent=2) }}</pre>
+            {% endif %}
+          {% else %}
+            <div class="text-danger">Error en esta prueba.</div>
+          {% endif %}
+        </div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+{% endblock %}
