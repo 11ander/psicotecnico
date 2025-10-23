@@ -1,7 +1,7 @@
 from gpiozero import LED, Button, PWMOutputDevice
 from random import choice
 from time import sleep, time
-from grove_rgb_lcd import setText
+from .grove_rgb_lcd import setText
 
 RESULTADO_OK = None
 LONGITUD_SECUENCIA = 1  # valor inicial, se reasigna en cada nivel
