@@ -1,8 +1,0 @@
-prefix=/home/robotica_tiago/carpeta_compartida/psico_ws/devel
-
-Name: web_server_pkg
-Description: Description of web_server_pkg
-Version: 0.0.0
-Cflags: 
-Libs: -L${prefix}/lib 
-Requires: 
