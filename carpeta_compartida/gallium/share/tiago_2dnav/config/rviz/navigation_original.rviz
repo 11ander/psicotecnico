@@ -602,6 +602,19 @@ Visualization Manager:
           Topic: particlecloud
           Unreliable: false
           Value: true
+        - 6DOF: false
+          Alpha: 1
+          Axis: false
+          Class: rviz_plugin_covariance/Pose
+          Color: 204; 51; 204
+          Enabled: false
+          Name: Pose
+          Orientation: true
+          Position: true
+          Scale: 1
+          Topic: ""
+          Unreliable: false
+          Value: false
         - Class: rviz/MarkerArray
           Enabled: true
           Marker Topic: slam_graph_marker_array
