@@ -1,0 +1,234 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pruebas Psicotécnicas</title>
+  <style>
+    :root { font-family: system-ui, Arial, sans-serif; }
+    body { margin: 24px; color: #222; }
+    h1 { font-size: 28px; margin-bottom: 12px; }
+    .row { display: flex; gap: 24px; flex-wrap: wrap; }
+    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,.05); background: #fff; min-width: 320px; }
+    .btn { border: 1px solid #d1d5db; background: #f9fafb; padding: 8px 12px;
+           border-radius: 10px; cursor: pointer; font-weight: 600; }
+    .btn:hover { background: #f3f4f6; }
+    .btn.primary { background: #111827; color: #fff; border-color: #111827; }
+    .btn.primary:hover { background: #0b1220; }
+    .btn.small { padding: 4px 8px; font-weight: 500; }
+    .stack { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    ul.queue { list-style: none; padding: 0; margin: 8px 0 0 0; }
+    ul.queue li { display: flex; align-items: center; justify-content: space-between;
+                  gap: 8px; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 10px;
+                  background: #f9fafb; margin-top: 8px; }
+    .tag { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .tag.reflejos { background: #e0f2fe; color: #075985; }
+    .tag.memoria  { background: #dcfce7; color: #166534; }
+    .muted { color: #6b7280; }
+    pre { background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 10px; overflow: auto; }
+    .grow { flex: 1 1 360px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    input[type="text"] { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; }
+  </style>
+</head>
+<body>
+  <h1>PSICOTECNICO</h1>
+
+  <div class="row">
+    <!-- Decir quien eres y elegir pruebas -->
+    <div class="card grow">
+      <div class="row" style="gap:16px;">
+        <div class="field" style="min-width:240px;">
+          <label>Nombre</label>
+          <input type="text" id="nombre" placeholder="Nombre del paciente">
+        </div>
+        <div class="field" style="min-width:320px;">
+          <label>Apellidos</label>
+          <input type="text" id="apellidos" placeholder="Apellidos del paciente">
+        </div>
+      </div>
+
+      <div class="stack" style="margin-top:12px;">
+        <button class="btn" onclick="addTest('reflejos')">➕ Reflejos</button>
+        <button class="btn" onclick="addTest('memoria')">➕ Memoria</button>
+      </div>
+
+      <ul id="queue" class="queue"></ul>
+
+      <div class="stack" style="margin-top:10px;">
+        <button class="btn" onclick="clearQueue()">Vaciar</button>
+        <div class="grow"></div>
+        <button id="startBtn" class="btn primary" onclick="start()" disabled>EMPEZAR</button>
+      </div>
+    </div>
+
+    <!-- Para ver cque prueban se ejecutan -->
+    <div class="card grow">
+      <h2 style="margin-top:0">Estado</h2>
+      <div class="muted" id="runState">—</div>
+      <pre id="log" style="min-height:160px; margin-top:8px;"></pre>
+    </div>
+
+    <!-- Resultado de cada prueba individual en vivo-->
+    <div class="card grow">
+      <h2 style="margin-top:0">Resultados</h2>
+      <ul id="results"></ul>
+    </div>
+
+    <!-- Historico de pruebas -->
+    <div class="card grow">
+      <div class="stack" style="justify-content: space-between;">
+        <h2 style="margin:0">Histórico</h2>
+        <button class="btn small" onclick="clearHistory()">Borrar histórico</button>
+      </div>
+      <div style="overflow:auto; max-height:320px; margin-top:8px;">
+        <table id="histTable">
+          <thead>
+            <tr><th>#</th><th>Fecha</th><th>Hora</th><th>Nombre</th><th>Apellidos</th><th>Resumen pruebas</th></tr>
+          </thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+let queue = [];
+let running = false;
+let wasRunning = false;
+
+function labelOf(t){ return t === 'reflejos' ? 'Reflejos' : 'Memoria'; }
+function tagClass(t){ return t === 'reflejos' ? 'reflejos' : 'memoria'; }
+
+function addTest(t){
+  if (running) return;
+  if (queue.includes(t)) return;
+  queue.push(t);
+  renderQueue();
+}
+function removeAt(i){ if (running) return; queue.splice(i,1); renderQueue(); }
+function move(i, d){ if (running) return; const j=i+d; if(j<0||j>=queue.length) return; [queue[i],queue[j]]=[queue[j],queue[i]]; renderQueue(); }
+function clearQueue(){ if (running) return; queue = []; renderQueue(); }
+
+function renderQueue(){
+  const ul = document.getElementById('queue');
+  ul.innerHTML = '';
+  queue.forEach((t, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="tag ${tagClass(t)}">${labelOf(t)}</span>
+      <span class="muted">#${i+1}</span>
+      <span>
+        <button class="btn small" onclick="move(${i},-1)">↑</button>
+        <button class="btn small" onclick="move(${i}, 1)">↓</button>
+        <button class="btn small" onclick="removeAt(${i})">✕</button>
+      </span>`;
+    ul.appendChild(li);
+  });
+  enableStartIfReady();
+}
+
+function enableStartIfReady(){
+  const nombre = document.getElementById('nombre').value.trim();
+  const apell  = document.getElementById('apellidos').value.trim();
+  const ok = !running && queue.length > 0 && nombre && apell;
+  document.getElementById('startBtn').disabled = !ok;
+}
+document.getElementById('nombre').addEventListener('input', enableStartIfReady);
+document.getElementById('apellidos').addEventListener('input', enableStartIfReady);
+
+async function start(){
+  if (queue.length === 0) return;
+  const nombre = document.getElementById('nombre').value.trim();
+  const apell  = document.getElementById('apellidos').value.trim();
+  if (!nombre || !apell) return;
+
+  running = true;
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById("results").innerHTML = "";
+  document.getElementById("log").textContent = "";
+
+  await fetch("/start", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({order: queue, patient: {nombre, apellidos: apell}})
+  });
+}
+
+function renderResults(resultados){
+  const ul = document.getElementById("results");
+  ul.innerHTML = "";
+  (resultados || []).forEach(r => {
+    const li = document.createElement("li");
+    const nota = (r.puntuacion === null || typeof r.puntuacion === 'undefined') ? '—' : r.puntuacion;
+    li.textContent = `${r.hora} · ${labelOf(r.prueba)} → nota: ${nota}`;
+    ul.appendChild(li);
+  });
+}
+
+function renderHistory(filas){
+  const tb = document.getElementById('histBody');
+  tb.innerHTML = '';
+  (filas || []).forEach((sesion, idx) => {
+    const p = sesion.paciente || {};
+    const pruebas = sesion.pruebas || [];
+    const resumen = pruebas.map(x => {
+      const nota = (x.puntuacion === null || typeof x.puntuacion === 'undefined') ? '—' : x.puntuacion;
+      const etiqueta = labelOf(x.prueba || '');
+      return `${etiqueta}: ${nota}${x.hora ? ' ('+x.hora+')' : ''}`;
+    }).join(', ');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx+1}</td>
+      <td>${sesion.fecha || ''}</td>
+      <td>${sesion.hora || ''}</td>
+      <td>${p.nombre || ''}</td>
+      <td>${p.apellidos || ''}</td>
+      <td>${resumen}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function loadHistory(){
+  const r = await fetch("/history");
+  const j = await r.json();
+  renderHistory(j.filas || []);
+}
+
+async function clearHistory(){
+  if (!confirm("¿Borrar todo el histórico? Esta acción no se puede deshacer.")) return;
+  await fetch("/history/clear", {method:"POST"});
+  await loadHistory();
+}
+
+async function poll(){
+  const r = await fetch("/status");
+  const j = await r.json();
+
+  const estado = j.estado || {};
+  const registro = j.registro || [];
+  document.getElementById("log").textContent = registro.join("\n");
+
+  running = !!estado.ejecutando;
+  const hechas = estado.pruebas_completadas || [];
+  const txt = running ? `Ejecutando… (completadas: ${hechas.length})`
+                      : `Inactivo (completadas: ${hechas.length})`;
+  document.getElementById('runState').textContent = txt;
+
+  if (wasRunning && !running) {
+    loadHistory();
+  }
+  wasRunning = running;
+
+  renderResults(estado.resultados || []);
+  enableStartIfReady();
+}
+
+renderQueue();
+loadHistory();
+setInterval(poll, 800);
+</script>
+</body>
+</html>
