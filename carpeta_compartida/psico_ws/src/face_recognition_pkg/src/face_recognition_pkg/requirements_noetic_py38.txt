@@ -1,0 +1,19 @@
+# Núcleo
+deepface==0.0.93
+opencv-python==4.10.0.84
+numpy==1.24.3
+rospkg==1.6.0
+
+# Detectores/auxiliares que DeepFace puede usar
+retina-face==0.0.17
+mtcnn==0.1.1
+mediapipe==0.10.11
+
+# TensorFlow/Keras compatibles con py3.8 (CPU)
+tensorflow==2.13.1
+tensorflow-estimator==2.13.0
+keras==2.13.1
+protobuf==3.20.3
+
+# Útiles
+tqdm==4.67.1
