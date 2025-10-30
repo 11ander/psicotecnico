@@ -1,276 +1,248 @@
-# app.py
+#!/usr/bin/env python3
 import os
-import uuid
 import threading
-import traceback
 from datetime import datetime
-from typing import Dict, Any, List
+from typing import Dict, Any, Optional
 
-from flask import Flask, render_template, request, jsonify, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
 
 # ==== ROS (ROS1 Noetic) ====
 import rospy
 import actionlib
+from rpi_pkg.msg import MemoriaAction, MemoriaGoal, ReflejosAction, ReflejosGoal
+
+# Face recognition action (ya lo tienes corriendo en otra terminal)
 from roslib.message import get_message_class
 
-# -------------------------------------------------------------------------------------
-# CONFIGURA AQUÍ TUS SERVIDORES DE ACCIÓN (paquete/Action, nombre del servidor, etc.)
-# Cada prueba debe tener: display (nombre en UI), action_spec (<pkg>/<Action>Action),
-# server_name (nombre del action server), result_mapper (opcional, para formatear result).
-# -------------------------------------------------------------------------------------
-
-def audicion_result_mapper(result_msg) -> Dict[str, Any]:
-    # Audición: int32[4] resultados [num_llamadas_p1, num_llamadas_p2, aciertos_p2, fallos_p2]
-    # Se expondrá con nombres legibles en el glosario.
-    try:
-        arr = list(result_msg.resultados)
-    except Exception:
-        arr = []
-    keys = ["Num llamadas P1", "Num llamadas P2", "Aciertos P2", "Fallos P2"]
-    mapped = {}
-    for i, k in enumerate(keys):
-        mapped[k] = arr[i] if i < len(arr) else None
-    return mapped
-
-TESTS: Dict[str, Dict[str, Any]] = {
-    "audicion": {
-        "display": "Audición",
-        "action_spec": "psicotecnico_msgs/AudicionAction",   # <-- AJUSTA EL PAQUETE/Action a tu entorno
-        "server_name": "/audicion",                          # <-- Nombre del action server
-        "result_mapper": audicion_result_mapper
-    },
-    "coordinacion": {
-        "display": "Coordinación",
-        # Suponiendo misma interfaz (bool ejecutar). Ajusta a tu paquete/Action real:
-        "action_spec": "psicotecnico_msgs/CoordinacionAction",
-        "server_name": "/coordinacion",
-        "result_mapper": None  # genérico: serializamos campos del result
-    },
-    "vision": {
-        "display": "Visión",
-        "action_spec": "psicotecnico_msgs/VisionAction",
-        "server_name": "/vision",
-        "result_mapper": None
-    },
-    "reflejos": {
-        "display": "Reflejos",
-        "action_spec": "psicotecnico_msgs/ReflejosAction",
-        "server_name": "/reflejos",
-        "result_mapper": None
-    },
-}
-
-# -------------------------------------------------------------------------------------
-# Inicialización Flask
-# -------------------------------------------------------------------------------------
-app = Flask(__name__)
-app.config['JSON_SORT_KEYS'] = False
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app = Flask(
+    __name__,
+    template_folder=os.path.join(BASE_DIR, "templates"),
+    static_folder=os.path.join(BASE_DIR, "static"),
+)
 app.secret_key = os.environ.get("FLASK_SECRET_KEY", "dev_secret_key_change_me")
 
-# -------------------------------------------------------------------------------------
-# ROS init (como cliente) - deshabilita señales para coexistir con Flask
-# -------------------------------------------------------------------------------------
+# ------------------- Estado en memoria -------------------
+SESION = {
+    "ejecutando": False,
+    "pruebas_completadas": [],
+    "resultados": [],          # [{prueba, puntuacion, hora}]
+    "paciente": {}             # {nombre, ...} (libre)
+}
+REGISTRO = []                 # logs en vivo
+HISTORICO = []                # sesiones anteriores
+
+def registrar(mensaje: str):
+    hora = datetime.now().strftime("%H:%M:%S")
+    entrada = f"[{hora}] {mensaje}"
+    REGISTRO.append(entrada)
+    print(entrada, flush=True)
+
+# ------------------- ROS init -------------------
 if not rospy.core.is_initialized():
-    rospy.init_node("psicotecnico_web_client", anonymous=True, disable_signals=True)
+    rospy.init_node('puente_web_ros', anonymous=True, disable_signals=True)
 
-# -------------------------------------------------------------------------------------
-# Gestión de jobs en memoria (simple)
-# -------------------------------------------------------------------------------------
-JOBS: Dict[str, Dict[str, Any]] = {}
-JOBS_LOCK = threading.Lock()
+# ------------------- Face recognition (cliente Action) -------------------
+FACE_ACTION_SPEC = "face_recognition_pkg/FaceRecognitionAction"
+FACE_SERVER_NAME = "face_recognition_action"
 
-def set_job(job_id: str, data: Dict[str, Any]):
-    with JOBS_LOCK:
-        JOBS[job_id] = data
-
-def get_job(job_id: str) -> Dict[str, Any]:
-    with JOBS_LOCK:
-        return JOBS.get(job_id, {})
-
-def serialize_ros_message(msg) -> Any:
+def face_login(max_minutes: float = 20.0) -> Optional[str]:
     """
-    Convierte un mensaje ROS (Result) en dict/list legible.
-    Si trae campos complejos, se intenta serializar por __slots__.
+    Espera indefinidamente a que el servidor de reconocimiento facial devuelva un nombre,
+    con un límite máximo de `max_minutes`. Si no se reconoce a nadie, devuelve None.
     """
-    try:
-        if hasattr(msg, "__slots__"):
-            out = {}
-            for s in msg.__slots__:
-                val = getattr(msg, s)
-                if hasattr(val, "__slots__"):
-                    out[s] = serialize_ros_message(val)
-                elif isinstance(val, (list, tuple)):
-                    out[s] = [
-                        serialize_ros_message(v) if hasattr(v, "__slots__") else v
-                        for v in val
-                    ]
-                else:
-                    out[s] = val
-            return out
-        # Si es primitivo/lista:
-        if isinstance(msg, (list, tuple)):
-            return list(msg)
-        return msg
-    except Exception:
-        return str(msg)
-
-def run_single_action(test_key: str) -> Dict[str, Any]:
-    """
-    Ejecuta un ActionClient para una prueba específica con Goal.ejecutar=True
-    Retorna un dict con estado y resultados ya "mapeados" (si hay mapper).
-    """
-    cfg = TESTS[test_key]
-    action_spec = cfg["action_spec"]
-    server_name = cfg["server_name"]
-
-    # Cargamos dinámicamente el tipo <Pkg>/<Name>Action
-    action_cls = get_message_class(action_spec)
+    action_cls = get_message_class(FACE_ACTION_SPEC)
     if action_cls is None:
-        raise RuntimeError(f"No se pudo cargar la Action '{action_spec}'. Verifica el paquete y la compilación.")
+        raise RuntimeError(f"No se pudo cargar la Action '{FACE_ACTION_SPEC}'. ¿Está compilada?")
 
-    # Derivar los tipos Goal/Result:
-    # En ROS1, para una Action llamada FooAction, las clases son FooAction, FooGoal, FooResult...
-    goal_type_name = action_spec.replace("Action", "Goal")
-    result_type_name = action_spec.replace("Action", "Result")
-    goal_cls = get_message_class(goal_type_name)
-    result_cls = get_message_class(result_type_name)
-    if goal_cls is None or result_cls is None:
-        raise RuntimeError(f"No se pudieron derivar Goal/Result de '{action_spec}'.")
+    goal_cls = get_message_class(FACE_ACTION_SPEC.replace("Action", "Goal"))
+    if goal_cls is None:
+        raise RuntimeError(f"No se pudo derivar Goal para '{FACE_ACTION_SPEC}'.")
 
-    client = actionlib.SimpleActionClient(server_name, action_cls)
-
-    # Esperar servidor (con timeout razonable)
+    client = actionlib.SimpleActionClient(FACE_SERVER_NAME, action_cls)
     if not client.wait_for_server(rospy.Duration(10.0)):
-        raise RuntimeError(f"Action server '{server_name}' no disponible.")
+        raise RuntimeError(f"Action server '{FACE_SERVER_NAME}' no disponible.")
 
-    # Construir y enviar Goal
     goal = goal_cls()
-    # Por interfaz estandarizada, usamos bool ejecutar
     if not hasattr(goal, "ejecutar"):
-        raise RuntimeError(f"El Goal de '{action_spec}' no tiene campo 'ejecutar'.")
+        raise RuntimeError("El Goal de FaceRecognition no tiene campo 'ejecutar'.")
     goal.ejecutar = True
 
+    # Enviamos UNA vez el goal; el servidor termina cuando reconoce a alguien
     client.send_goal(goal)
-    # Esperar a que termine (puedes ajustar el timeout si alguna prueba dura más)
-    finished = client.wait_for_result(rospy.Duration(600.0))
-    if not finished:
-        client.cancel_goal()
-        raise RuntimeError(f"Timeout esperando resultado de '{server_name}'.")
 
-    result_msg = client.get_result()
-    # Mapeo específico (si se definió)
-    mapper = cfg.get("result_mapper")
-    if callable(mapper):
-        mapped = mapper(result_msg)
-    else:
-        mapped = serialize_ros_message(result_msg)
+    start = rospy.Time.now()
+    check_step = rospy.Duration(2.0)  # re-chequeo cada 2 s sin bloquear
+    limit = rospy.Duration(max_minutes * 60.0)
 
-    return {
-        "test_key": test_key,
-        "test_display": cfg["display"],
-        "server": server_name,
-        "action_spec": action_spec,
-        "ok": True,
-        "result": mapped,
-    }
+    registrar("Login: colócate frente a la cámara del TIAGo, mira al objetivo y mantén la cara iluminada.")
 
-def run_sequence(job_id: str, ordered_tests: List[str]):
-    """
-    Ejecuta la secuencia completa, actualiza el estado del job y guarda resultados.
-    """
-    set_job(job_id, {
-        "job_id": job_id,
-        "state": "running",
-        "started_at": datetime.utcnow().isoformat() + "Z",
-        "current": None,
-        "done": [],
-        "error": None,
-        "results": {},  # test_key -> result dict
-        "order": ordered_tests,
-    })
+    while not rospy.is_shutdown():
+        # Espera 'check_step'; si acaba antes porque hay resultado, devolvemos nombre
+        if client.wait_for_result(check_step):
+            result = client.get_result()
+            if result:
+                nombre = (getattr(result, "nombre", "") or "").strip()
+                if nombre:
+                    registrar(f"Login: reconocido '{nombre}'.")
+                    return nombre
+            # Si por alguna razón vuelve sin nombre, reenvía el goal
+            client.send_goal(goal)
 
-    for t in ordered_tests:
-        try:
-            # Actualizar "current"
-            data = get_job(job_id)
-            data["current"] = t
-            set_job(job_id, data)
+        # ¿Se superó el límite?
+        if (rospy.Time.now() - start) > limit:
+            try:
+                client.cancel_goal()
+            except Exception:
+                pass
+            registrar("Login: 20 minutos sin reconocimiento. Revisa iluminación/encuadre.")
+            return None
 
-            # Ejecutar prueba
-            outcome = run_single_action(t)
 
-            # Guardar resultados
-            data = get_job(job_id)
-            data["done"].append(t)
-            data["results"][t] = outcome
-            data["current"] = None
-            set_job(job_id, data)
+# ------------------- Acciones de rpi_pkg -------------------
+def ejecutar_prueba_memoria() -> float:
+    registrar("Enviando objetivo a /memoria...")
+    cliente = actionlib.SimpleActionClient('memoria', MemoriaAction)
+    if not cliente.wait_for_server(timeout=rospy.Duration(5.0)):
+        registrar("ERROR: El servidor de acción 'memoria' no está disponible.")
+        return -1.0
+    objetivo = MemoriaGoal(input=True)
+    cliente.send_goal(objetivo)
+    cliente.wait_for_result(rospy.Duration(60.0))
+    resultado = cliente.get_result()
+    puntuacion = resultado.result if resultado else -1.0
+    registrar(f"Prueba de memoria finalizada. Puntuación: {puntuacion}")
+    return puntuacion
 
-        except Exception as e:
-            data = get_job(job_id)
-            data["state"] = "error"
-            data["error"] = {
-                "test": t,
-                "message": str(e),
-                "trace": traceback.format_exc(),
-            }
-            set_job(job_id, data)
-            return
+def ejecutar_prueba_reflejos() -> float:
+    registrar("Enviando objetivo a /reflejos...")
+    cliente = actionlib.SimpleActionClient('reflejos', ReflejosAction)
+    if not cliente.wait_for_server(timeout=rospy.Duration(5.0)):
+        registrar("ERROR: El servidor de acción 'reflejos' no está disponible.")
+        return -1.0
+    objetivo = ReflejosGoal(input=True)
+    cliente.send_goal(objetivo)
+    cliente.wait_for_result(rospy.Duration(60.0))
+    resultado = cliente.get_result()
+    puntuacion = resultado.result if resultado else -1.0
+    registrar(f"Prueba de reflejos finalizada. Puntuación: {puntuacion}")
+    return puntuacion
 
-    data = get_job(job_id)
-    data["state"] = "done"
-    data["finished_at"] = datetime.utcnow().isoformat() + "Z"
-    set_job(job_id, data)
-
-# -------------------------------------------------------------------------------------
-# Rutas Flask
-# -------------------------------------------------------------------------------------
+# ------------------- Rutas -------------------
+def require_login():
+    if not session.get("user"):
+        return False
+    return True
 
 @app.route("/")
-def index():
-    # Pasamos las pruebas disponibles a la UI
-    tests = [{"key": k, "display": v["display"]} for k, v in TESTS.items()]
-    return render_template("index.html", tests=tests)
+def inicio():
+    # Si no has hecho login (reconocimiento facial), pide login
+    if not require_login():
+        return redirect(url_for("login"))
+    return render_template("index.html")  # tu panel actual
 
-@app.route("/run", methods=["POST"])
-def run_tests():
-    """
-    Inicia un job con el orden de pruebas. Espera JSON:
-    { "order": ["audicion", "vision", ...] }
-    """
-    payload = request.get_json(force=True, silent=True) or {}
-    order = payload.get("order", [])
+# ---- Login por reconocimiento facial ----
+@app.route("/login", methods=["GET"])
+def login():
+    if session.get("user"):
+        return redirect(url_for("inicio"))
+    return render_template("login.html")
 
-    # Validar claves
-    valid_order = [t for t in order if t in TESTS.keys()]
-    if not valid_order:
-        return jsonify({"error": "Debes enviar un orden válido de pruebas."}), 400
+@app.route("/api/login", methods=["POST"])
+def api_login():
+    try:
+        nombre = face_login(max_minutes=20.0)
+        if not nombre:
+            return jsonify(
+                ok=False,
+                error=(
+                    "No se reconoció ningún rostro en 20 minutos. "
+                    "Acerca el rostro a cámara, mira al objetivo y mejora la iluminación de la sala."
+                )
+            )
+        session["user"] = nombre
+        return jsonify(ok=True, user=nombre)
+    except Exception as e:
+        return jsonify(ok=False, error=str(e))
 
-    job_id = str(uuid.uuid4())
-    thread = threading.Thread(target=run_sequence, args=(job_id, valid_order), daemon=True)
-    thread.start()
-    return jsonify({"job_id": job_id})
 
-@app.route("/status/<job_id>")
-def status(job_id):
-    data = get_job(job_id)
-    if not data:
-        return jsonify({"error": "Job no encontrado"}), 404
-    return jsonify(data)
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
 
-@app.route("/summary/<job_id>")
-def summary(job_id):
-    data = get_job(job_id)
-    if not data:
-        return redirect(url_for("index"))
-    if data.get("state") != "done":
-        # Si no terminó, vuelve a la pantalla principal (o puedes mostrar progreso)
-        return redirect(url_for("index"))
-    return render_template("summary.html", job=data)
+# ---- API existente (protegemos por login) ----
+@app.route("/ping")
+def ping():
+    return "pong", 200
 
-# -------------------------------------------------------------------------------------
-# Main
-# -------------------------------------------------------------------------------------
+@app.route("/start", methods=["POST"])
+def iniciar_pruebas():
+    if not require_login():
+        return jsonify(ok=False, error="No autenticado"), 401
+
+    datos: Dict[str, Any] = request.get_json(force=True)
+    secuencia_pruebas = datos.get("order", [])
+    info_paciente = datos.get("patient", {})
+
+    REGISTRO.clear()
+    SESION.update({
+        "ejecutando": True,
+        "pruebas_completadas": [],
+        "resultados": [],
+        "paciente": info_paciente
+    })
+
+    def trabajador_fondo():
+        for id_prueba in secuencia_pruebas:
+            if id_prueba == "memoria":
+                puntuacion = ejecutar_prueba_memoria()
+            elif id_prueba == "reflejos":
+                puntuacion = ejecutar_prueba_reflejos()
+            else:
+                puntuacion = None
+
+            ahora = datetime.now()
+            SESION["pruebas_completadas"].append(id_prueba)
+            SESION["resultados"].append({
+                "prueba": id_prueba,
+                "puntuacion": puntuacion,
+                "hora": ahora.strftime("%H:%M:%S")
+            })
+
+        SESION["ejecutando"] = False
+        ts = datetime.now()
+        HISTORICO.append({
+            "fecha": ts.strftime("%Y-%m-%d"),
+            "hora":  ts.strftime("%H:%M:%S"),
+            "paciente": dict(SESION.get("paciente", {})),
+            "pruebas": list(SESION.get("resultados", []))
+        })
+
+    threading.Thread(target=trabajador_fondo, daemon=True).start()
+    return jsonify(ok=True)
+
+@app.route("/status")
+def obtener_estado():
+    if not require_login():
+        return jsonify(ok=False, error="No autenticado"), 401
+    return jsonify(estado=SESION, registro=REGISTRO)
+
+@app.route("/history")
+def obtener_historial():
+    if not require_login():
+        return jsonify(ok=False, error="No autenticado"), 401
+    return jsonify(filas=HISTORICO)
+
+@app.route("/history/clear", methods=["POST"])
+def limpiar_historial():
+    if not require_login():
+        return jsonify(ok=False, error="No autenticado"), 401
+    HISTORICO.clear()
+    return jsonify(ok=True)
+
+# ------------------- Main -------------------
 if __name__ == "__main__":
-    # Puedes usar host 0.0.0.0 si vas a exponer en Docker
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 5000)), debug=True)
+    # Recuerda lanzar antes el action server de reconocimiento facial
+    # rosrun face_recognition_pkg recognize_action_server.py _db_path:=package://face_recognition_pkg/src/face_recognition_pkg/embeddings_db.json
+    app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
