@@ -55,3 +55,4 @@ CMakeLists.txt.user
 # Face recognition local data
 carpeta_compartida/psico_ws/src/face_recognition_pkg/src/face_recognition_pkg/embeddings_db.json
 carpeta_compartida/psico_ws/src/face_recognition_pkg/src/face_recognition_pkg/core.*
+carpeta_compartida/psico_ws/src/pal_msgs/
