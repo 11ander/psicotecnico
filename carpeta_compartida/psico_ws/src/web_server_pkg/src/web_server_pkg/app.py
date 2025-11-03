@@ -14,6 +14,8 @@ from rpi_pkg.msg import MemoriaAction, MemoriaGoal, ReflejosAction, ReflejosGoal
 # Face recognition action (ya lo tienes corriendo en otra terminal)
 from roslib.message import get_message_class
 
+from speak_api import TiagoSpeaker
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app = Flask(
     __name__,
@@ -41,6 +43,10 @@ def registrar(mensaje: str):
 # ------------------- ROS init -------------------
 if not rospy.core.is_initialized():
     rospy.init_node('puente_web_ros', anonymous=True, disable_signals=True)
+
+# Instancia del speaker 
+speaker = TiagoSpeaker(prefer_pal_tts=True)
+
 
 # ------------------- Face recognition (cliente Action) -------------------
 FACE_ACTION_SPEC = "face_recognition_pkg/FaceRecognitionAction"
@@ -161,6 +167,14 @@ def api_login():
                 )
             )
         session["user"] = nombre
+
+        # Mensaje de bienvenida con TTS (no bloquea la respuesta HTTP)
+        try:
+            speaker.speak_async(f"Bienvenido {nombre} a la consulta, pase por aquí", lang_id="es_ES")
+        except Exception as e:
+            registrar(f"TTS error al saludar: {e}")
+
+
         return jsonify(ok=True, user=nombre)
     except Exception as e:
         return jsonify(ok=False, error=str(e))

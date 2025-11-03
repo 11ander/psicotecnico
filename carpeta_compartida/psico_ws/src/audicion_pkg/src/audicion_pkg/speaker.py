@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+
 
 import rospy
 from pal_interaction_msgs.msg import TtsAction, TtsGoal
