@@ -24,11 +24,13 @@
     .tag { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
     .tag.reflejos { background: #e0f2fe; color: #075985; }
     .tag.memoria  { background: #dcfce7; color: #166534; }
+    .tag.audicion { background: #fde68a; color: #92400e; }
+
     .muted { color: #6b7280; }
     pre { background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 10px; overflow: auto; }
     .grow { flex: 1 1 360px; }
     .field { display: flex; flex-direction: column; gap: 6px; }
-    input[type="text"] { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 10px; }
+    input[type="text"], input[type="number"] { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 10px; }
     table { width: 100%; border-collapse: collapse; }
     th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; }
   </style>
@@ -37,7 +39,7 @@
   <h1>PSICOTECNICO</h1>
 
   <div class="row">
-    <!-- Decir quien eres y elegir pruebas -->
+    <!-- Datos paciente y cola -->
     <div class="card grow">
       <div class="row" style="gap:16px;">
         <div class="field" style="min-width:240px;">
@@ -53,6 +55,7 @@
       <div class="stack" style="margin-top:12px;">
         <button class="btn" onclick="addTest('reflejos')">➕ Reflejos</button>
         <button class="btn" onclick="addTest('memoria')">➕ Memoria</button>
+        <button class="btn" onclick="addTest('audicion')">➕ Audición</button>
       </div>
 
       <ul id="queue" class="queue"></ul>
@@ -64,20 +67,20 @@
       </div>
     </div>
 
-    <!-- Para ver cque prueban se ejecutan -->
+    <!-- Estado -->
     <div class="card grow">
       <h2 style="margin-top:0">Estado</h2>
       <div class="muted" id="runState">—</div>
       <pre id="log" style="min-height:160px; margin-top:8px;"></pre>
     </div>
 
-    <!-- Resultado de cada prueba individual en vivo-->
+    <!-- Resultados en vivo -->
     <div class="card grow">
       <h2 style="margin-top:0">Resultados</h2>
       <ul id="results"></ul>
     </div>
 
-    <!-- Historico de pruebas -->
+    <!-- Histórico -->
     <div class="card grow">
       <div class="stack" style="justify-content: space-between;">
         <h2 style="margin:0">Histórico</h2>
@@ -99,8 +102,18 @@ let queue = [];
 let running = false;
 let wasRunning = false;
 
-function labelOf(t){ return t === 'reflejos' ? 'Reflejos' : 'Memoria'; }
-function tagClass(t){ return t === 'reflejos' ? 'reflejos' : 'memoria'; }
+function labelOf(t){
+  if (t === 'reflejos') return 'Reflejos';
+  if (t === 'memoria')  return 'Memoria';
+  if (t === 'audicion') return 'Audición';
+  return t;
+}
+function tagClass(t){
+  if (t === 'reflejos') return 'reflejos';
+  if (t === 'memoria')  return 'memoria';
+  if (t === 'audicion') return 'audicion';
+  return '';
+}
 
 function addTest(t){
   if (running) return;
@@ -160,12 +173,80 @@ async function start(){
 function renderResults(resultados){
   const ul = document.getElementById("results");
   ul.innerHTML = "";
-  (resultados || []).forEach(r => {
+  (resultados || []).forEach((r, idx) => {
     const li = document.createElement("li");
     const nota = (r.puntuacion === null || typeof r.puntuacion === 'undefined') ? '—' : r.puntuacion;
-    li.textContent = `${r.hora} · ${labelOf(r.prueba)} → nota: ${nota}`;
+    let html = `<div><strong>${r.hora || ''}</strong> · ${labelOf(r.prueba)} → nota: ${nota}</div>`;
+
+    if (r.prueba === 'audicion') {
+      const d = r.detalles || {};
+      // Métricas: P1 = pulsador (desde p2_*), P2 = conteo (desde p1_total)
+      html += `
+        <div class="muted" style="margin-top:6px;">
+          <b>P1 (Pulsador)</b> → Emitidos: <b>${d.pulsador_emitidos ?? '—'}</b>,
+          Aciertos: <b>${d.pulsador_aciertos ?? '—'}</b>,
+          Fallos: <b>${d.pulsador_fallos ?? '—'}</b><br>
+          <b>P2 (Conteo)</b> → Emitidos: <b>${d.conteo_emitidos ?? '—'}</b>
+        </div>
+      `;
+
+      // Notas P1/P2
+      const notaP1 = (d.nota_p1 !== undefined) ? d.nota_p1 : '—';
+      const notaP2 = (d.nota_p2 !== undefined) ? d.nota_p2 : '—';
+      html += `
+        <div style="margin-top:6px;">
+          <b>Nota P1</b> (pulsador): ${notaP1}/10 &nbsp;·&nbsp;
+          <b>Nota P2</b> (conteo): ${notaP2}/10
+        </div>
+      `;
+
+      // Formulario para P2 (conteo) si aún no hay respuesta
+      const yaRespondido = !!(r.respuesta_usuario);
+      const necesita = d.requiere_input && !yaRespondido;
+      if (necesita) {
+        const schema = d.input_schema || {};
+        const campo = (schema.campos && schema.campos[0]) ||
+          {name:"p2_contados_paciente",label:"¿Cuántos pitidos escuchaste en la PRUEBA 2?", type:"number"};
+        const inputId = `aud_${idx}_${campo.name}`;
+        html += `
+          <div style="margin-top:10px; padding:10px; border:1px dashed #e5e7eb; border-radius:8px;">
+            <div style="font-weight:600; margin-bottom:6px;">${schema.titulo || 'Audición – Respuesta del paciente (P2)'}</div>
+            <div class="muted" style="margin-bottom:8px;">${schema.descripcion || ''}</div>
+            <div class="field" style="max-width:260px;">
+              <label>${campo.label || 'Respuesta'}</label>
+              <input type="${campo.type || 'number'}" id="${inputId}" min="${campo.min ?? 0}" />
+            </div>
+            <div class="stack" style="margin-top:8px;">
+              <button class="btn small" onclick="enviarRespuestaAudicion(${idx}, '${campo.name}', '${inputId}')">Guardar</button>
+            </div>
+          </div>
+        `;
+      } else if (yaRespondido) {
+        const v = r.respuesta_usuario || {};
+        if (typeof v.p2_contados_paciente !== 'undefined') {
+          html += `<div style="margin-top:6px;">✅ Respuesta guardada (P2): <b>${v.p2_contados_paciente}</b></div>`;
+        }
+      }
+    }
+
+    li.innerHTML = html;
     ul.appendChild(li);
   });
+}
+
+async function enviarRespuestaAudicion(index, fieldName, inputId){
+  const valRaw = document.getElementById(inputId).value.trim();
+  if (valRaw === '') return alert("Introduce un número, por favor.");
+  const val = Number(valRaw);
+  if (!Number.isFinite(val) || val < 0) return alert("Valor inválido.");
+
+  await fetch("/answer", {
+    method:"POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ index, values: { [fieldName]: val } })
+  });
+
+  setTimeout(poll, 200);
 }
 
 function renderHistory(filas){
@@ -177,7 +258,16 @@ function renderHistory(filas){
     const resumen = pruebas.map(x => {
       const nota = (x.puntuacion === null || typeof x.puntuacion === 'undefined') ? '—' : x.puntuacion;
       const etiqueta = labelOf(x.prueba || '');
-      return `${etiqueta}: ${nota}${x.hora ? ' ('+x.hora+')' : ''}`;
+      let extra = '';
+      if (x.prueba === 'audicion') {
+        const d = x.detalles || {};
+        const userCount = x.respuesta_usuario && x.respuesta_usuario.p2_contados_paciente;
+        const p1Txt = (d.nota_p1 !== undefined) ? `P1=${d.nota_p1}/10` : `P1=—/10`;
+        const p2Txt = (d.nota_p2 !== undefined) ? `P2=${d.nota_p2}/10` : `P2=—/10`;
+        const contadoTxt = (userCount !== undefined) ? ` · Contó P2: ${userCount}` : '';
+        extra = ` · ${p1Txt}; ${p2Txt}${contadoTxt}`;
+      }
+      return `${etiqueta}: ${nota}${extra}${x.hora ? ' ('+x.hora+')' : ''}`;
     }).join(', ');
     const tr = document.createElement('tr');
     tr.innerHTML = `
