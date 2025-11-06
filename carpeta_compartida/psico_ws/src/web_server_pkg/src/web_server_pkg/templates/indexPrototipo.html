@@ -170,9 +170,20 @@ async function start(){
   });
 }
 
+/* === NUEVA VERSION DE renderResults (mantiene lo escrito y permite Enter) === */
 function renderResults(resultados){
   const ul = document.getElementById("results");
+
+  // 1) Guardar lo que el usuario ya estaba escribiendo en inputs de audición
+  const prevInputs = {};
+  ul.querySelectorAll('input[data-audicion-input="1"]').forEach(inp => {
+    prevInputs[inp.id] = inp.value;
+  });
+
+  // 2) Vaciamos y preparamos lista de inputs que necesitan eventos
   ul.innerHTML = "";
+  const pendingAudInputs = [];
+
   (resultados || []).forEach((r, idx) => {
     const li = document.createElement("li");
     const nota = (r.puntuacion === null || typeof r.puntuacion === 'undefined') ? '—' : r.puntuacion;
@@ -180,7 +191,8 @@ function renderResults(resultados){
 
     if (r.prueba === 'audicion') {
       const d = r.detalles || {};
-      // Métricas: P1 = pulsador (desde p2_*), P2 = conteo (desde p1_total)
+
+      // Métricas: P1 (pulsador) y P2 (conteo)
       html += `
         <div class="muted" style="margin-top:6px;">
           <b>P1 (Pulsador)</b> → Emitidos: <b>${d.pulsador_emitidos ?? '—'}</b>,
@@ -190,7 +202,6 @@ function renderResults(resultados){
         </div>
       `;
 
-      // Notas P1/P2
       const notaP1 = (d.nota_p1 !== undefined) ? d.nota_p1 : '—';
       const notaP2 = (d.nota_p2 !== undefined) ? d.nota_p2 : '—';
       html += `
@@ -200,27 +211,35 @@ function renderResults(resultados){
         </div>
       `;
 
-      // Formulario para P2 (conteo) si aún no hay respuesta
       const yaRespondido = !!(r.respuesta_usuario);
       const necesita = d.requiere_input && !yaRespondido;
+
       if (necesita) {
         const schema = d.input_schema || {};
         const campo = (schema.campos && schema.campos[0]) ||
           {name:"p2_contados_paciente",label:"¿Cuántos pitidos escuchaste en la PRUEBA 2?", type:"number"};
         const inputId = `aud_${idx}_${campo.name}`;
+
         html += `
           <div style="margin-top:10px; padding:10px; border:1px dashed #e5e7eb; border-radius:8px;">
             <div style="font-weight:600; margin-bottom:6px;">${schema.titulo || 'Audición – Respuesta del paciente (P2)'}</div>
             <div class="muted" style="margin-bottom:8px;">${schema.descripcion || ''}</div>
             <div class="field" style="max-width:260px;">
               <label>${campo.label || 'Respuesta'}</label>
-              <input type="${campo.type || 'number'}" id="${inputId}" min="${campo.min ?? 0}" />
+              <input
+                type="${campo.type || 'number'}"
+                id="${inputId}"
+                data-audicion-input="1"
+                min="${campo.min ?? 0}"
+              />
             </div>
             <div class="stack" style="margin-top:8px;">
               <button class="btn small" onclick="enviarRespuestaAudicion(${idx}, '${campo.name}', '${inputId}')">Guardar</button>
             </div>
           </div>
         `;
+
+        pendingAudInputs.push({ inputId, idx, fieldName: campo.name });
       } else if (yaRespondido) {
         const v = r.respuesta_usuario || {};
         if (typeof v.p2_contados_paciente !== 'undefined') {
@@ -231,6 +250,22 @@ function renderResults(resultados){
 
     li.innerHTML = html;
     ul.appendChild(li);
+  });
+
+  // 3) Restaurar valores previos y añadir Enter para enviar
+  pendingAudInputs.forEach(info => {
+    const inp = document.getElementById(info.inputId);
+    if (!inp) return;
+
+    if (prevInputs[info.inputId] !== undefined) {
+      inp.value = prevInputs[info.inputId];
+    }
+
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        enviarRespuestaAudicion(info.idx, info.fieldName, info.inputId);
+      }
+    });
   });
 }
 
