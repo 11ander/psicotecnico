@@ -22,7 +22,7 @@ zumbador = PWMOutputDevice(12)
 
 leds = [led1, led2, led3, led4, led5, led6]
 botones = [boton1, boton2, boton3, boton4, boton5, boton6]
-niveles = [2.5, 2, 1.5, 1.0, 0.5]  # Tiempos en segundos
+niveles = [2.0, 1.6, 1.2, 0.8, 0.4]  # Tiempos en segundos
 dificultad = ["MUY FACIL", "FACIL", "INTERMEDIO", "DIFICIL", "MUY DIFICIL"]
 
 def intro(nivel):
