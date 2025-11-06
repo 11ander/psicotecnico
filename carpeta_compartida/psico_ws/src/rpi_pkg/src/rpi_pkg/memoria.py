@@ -116,6 +116,11 @@ def prueba():
 
 def test_memoria():
     global LONGITUD_SECUENCIA, RESULTADO_OK
+    #Apago todos los leds antes de empezar por si se ha quedado alguno pillado
+    for led in leds:
+        led.off()
+    zumbador.value = 0
+    
     setText("PSICOTECNICO:\nPRUEBA MEMORIA")
     sleep(3)
     puntuacion = 0
@@ -137,6 +142,10 @@ def test_memoria():
     sleep(2)
     zumbador.value = 0
     setText("Fin de la\nprueba")
+    #Apago todos los leds para la siguiente prueba
+    for led in leds:
+        led.off()
+    zumbador.value = 0
     return puntuacion
 
 if __name__ == "__main__":

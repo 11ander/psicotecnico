@@ -135,6 +135,10 @@ def test_reflejos():
     puntuacion = 0
 
     try:
+        #Apago todos los leds antes de empezar por si se ha quedado alguno pillado
+        for led in leds:
+        led.off()
+        zumbador.value = 0
         setText("PSICOTECNICO:   PRUEBA REFLEJOS ")
         sleep(3)
         for nivel in range(len(niveles)):
