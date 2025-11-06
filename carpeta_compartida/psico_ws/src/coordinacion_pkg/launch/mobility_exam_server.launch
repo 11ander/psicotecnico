@@ -1,0 +1,10 @@
+<launch>
+  <node pkg="coordinacion_pkg" type="mobility_exam_action_server.py" name="mobility_exam_action_server" output="screen">
+    <param name="topic" value="/xtion/rgb/image_raw/compressed"/>
+    <param name="compressed" value="true"/>
+    <param name="complexity" value="1"/>
+    <param name="enable_ui" value="true"/>
+    <param name="mirror_view" value="false"/>
+    <param name="out_dir" value="$(env HOME)/mobility_runs"/>
+  </node>
+</launch>

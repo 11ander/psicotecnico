@@ -1,72 +1,103 @@
-// index.js: lógica del panel que habla con /start, /status, /history
+// index.js — Panel principal (cola de pruebas, progreso, resultados, histórico, PDF)
 
 (function () {
-  const availableList = document.getElementById('availableList');
-  const selectedList  = document.getElementById('selectedList');
+  // ---------- Referencias a elementos del DOM (usa ids del HTML actualizado) ----------
+  const queueListEl   = document.getElementById('queueList');              // UL de la cola seleccionada (estilo compi)
   const btnStart      = document.getElementById('btnStart');
   const btnClear      = document.getElementById('btnClear');
-  const runState      = document.getElementById('runState');
-  const logList       = document.getElementById('logList');
-  const progressBar   = document.getElementById('progressBar');
-  const runHint       = document.getElementById('runHint');
-
-  const patientName   = document.getElementById('patientName');
-  const patientId     = document.getElementById('patientId');
-
-  const statusArea    = document.getElementById('statusArea');
+  const runState      = document.getElementById('runState');               // Contenedor del bloque “estado de ejecución”
+  const runBanner     = document.getElementById('runBanner');              // <div class="alert ..."> dentro de runState
+  const runLabel      = document.getElementById('runLabel');               // <span> con texto “Ejecutando…” / “Finalizado”
+  const runHint       = document.getElementById('runHint');                // Subtítulo con pista (prueba actual)
+  const progressBar   = document.getElementById('progressBar');            // Barra de progreso
+  const logList       = document.getElementById('logList');                // UL de logs
+  const resultsList   = document.getElementById('results');                // UL de resultados en vivo (si existe)
+  const historyBody   = document.getElementById('historyBody');            // TBODY del histórico
   const btnHistory    = document.getElementById('btnHistory');
   const btnClearHist  = document.getElementById('btnClearHistory');
-  const historyBody   = document.getElementById('historyBody');
-  const userBadge     = document.getElementById('userBadge');
+  const btnDownload   = document.getElementById('btnDownload');            // Botón para descargar PDF al final
+  const userBadge     = document.getElementById('userBadge');              // Etiqueta con el usuario logado (opcional)
+  const ownerName     = document.getElementById('ownerName');              // Donde quieras replicar el nombre (opcional)
 
-  // Si el backend mete el nombre en sesión, puedes mostrarlo así (opcional)
-  // userBadge.textContent = "Sesión activa";
+  // ---------- Estado en front ----------
+  let testQueue = [];        // ¡No usar “queue” para evitar choque con window.queue (ids)!
+  let runPlan   = [];        // Copia inmutable de la cola cuando se pulsa “Empezar”
+  let pollingTimer = null;
 
-  // Lista de pruebas disponibles (ajústala si quieres cargarla del backend)
-  const AVAILABLE = [
-    { key: "memoria",  label: "Memoria"  },
-    { key: "reflejos", label: "Reflejos" }
-  ];
+  // Mapeo nombre legible y estilos (coherente con el compi)
+  const LABELS = { memoria: "Memoria", reflejos: "Reflejos", audicion: "Audición" };
+  function labelOf(k){ return LABELS[k] || (k ? (k[0].toUpperCase()+k.slice(1)) : ''); }
+  function tagClass(k){
+    if (k === 'reflejos') return 'bg-info-subtle text-info-emphasis';
+    if (k === 'memoria')  return 'bg-success-subtle text-success-emphasis';
+    if (k === 'audicion') return 'bg-warning-subtle text-warning-emphasis';
+    return 'bg-secondary-subtle text-secondary-emphasis';
+  }
 
-  // Pinta la lista de disponibles
-  function renderAvailable() {
-    availableList.innerHTML = '';
-    AVAILABLE.forEach(t => {
+  // ---------- Cola estilo compi (expuesta al HTML por onclick) ----------
+  window.addTest = function (key){
+    if (!key) return;
+    if (testQueue.includes(key)) return;
+    testQueue.push(key);
+    renderQueue();
+    enableStartIfReady();
+  };
+
+  window.removeItem = function (index){
+    if (!Number.isInteger(index)) return;
+    testQueue.splice(index, 1);
+    renderQueue();
+    enableStartIfReady();
+  };
+
+  window.moveItem = function (index, delta){
+    const i = index | 0;
+    const j = i + (delta | 0);
+    if (j < 0 || j >= testQueue.length) return;
+    [testQueue[i], testQueue[j]] = [testQueue[j], testQueue[i]];
+    renderQueue();
+  };
+
+  window.clearQueue = function (){
+    testQueue = [];
+    renderQueue();
+    enableStartIfReady();
+  };
+
+  function renderQueue(){
+    if (!queueListEl) return;
+    queueListEl.innerHTML = '';
+    testQueue.forEach((k, i) => {
       const li = document.createElement('li');
-      li.className = 'list-group-item d-flex justify-content-between align-items-center';
-      li.dataset.key = t.key;
-      li.innerHTML = `<span>${t.label}</span><span class="badge bg-secondary">Añadir</span>`;
-      availableList.appendChild(li);
+      li.className = 'list-group-item d-flex align-items-center justify-content-between';
+      li.innerHTML = `
+        <div class="d-flex align-items-center gap-2">
+          <span class="badge ${tagClass(k)}">${labelOf(k)}</span>
+          <span class="text-muted">#${i+1}</span>
+        </div>
+        <div class="d-flex gap-1">
+          <button class="btn btn-sm btn-outline-secondary" onclick="moveItem(${i},-1)">↑</button>
+          <button class="btn btn-sm btn-outline-secondary" onclick="moveItem(${i}, 1)">↓</button>
+          <button class="btn btn-sm btn-outline-danger"    onclick="removeItem(${i})">✕</button>
+        </div>`;
+      queueListEl.appendChild(li);
     });
   }
 
-  // Inicializa drag & drop
-  function initDnD() {
-    Sortable.create(availableList, {
-      group: { name: 'tests', pull: 'clone', put: false },
-      animation: 150,
-      sort: false
-    });
-    Sortable.create(selectedList, {
-      group: { name: 'tests', pull: true, put: true },
-      animation: 150
-    });
-
-    // click para pasar de disponibles a seleccionados
-    availableList.addEventListener('click', (e) => {
-      const li = e.target.closest('li.list-group-item');
-      if (!li) return;
-      const clone = li.cloneNode(true);
-      selectedList.appendChild(clone);
-    });
+  function enableStartIfReady(){
+    if (!btnStart) return;
+    btnStart.disabled = (testQueue.length === 0);
   }
 
   function setProgress(pct) {
-    progressBar.style.width = pct + '%';
-    progressBar.textContent = pct + '%';
+    if (!progressBar) return;
+    const p = Math.max(0, Math.min(100, pct|0));
+    progressBar.style.width = p + '%';
+    progressBar.textContent = p + '%';
   }
 
   function addLog(text, isError = false) {
+    if (!logList) return;
     const li = document.createElement('li');
     li.className = 'list-group-item';
     li.innerHTML = isError ? `<span class="text-danger">${text}</span>` : text;
@@ -74,35 +105,39 @@
     li.scrollIntoView({ behavior: 'smooth', block: 'end' });
   }
 
-  function getSelectedOrder() {
-    return [...selectedList.querySelectorAll('li')].map(li => li.getAttribute('data-key'));
+  async function loadUser() {
+    try {
+      const r = await fetch('/whoami');
+      if (!r.ok) return;
+      const j = await r.json();
+      const u = j.user || '';
+      if (userBadge) userBadge.textContent = u ? `Usuario: ${u}` : '';
+      if (ownerName) ownerName.textContent = u || '—';
+    } catch (e) {}
   }
 
-  // ---- START ----
+  // ---------- Inicio de la secuencia ----------
   async function startSequence() {
-    const order = getSelectedOrder();
-    if (!order.length) {
-      alert('Selecciona al menos una prueba.');
-      return;
-    }
+    if (!testQueue.length) return;
 
-    const patient = {
-      nombre: (patientName?.value || '').trim(),
-      id: (patientId?.value || '').trim()
-    };
-
-    // Reset UI
-    runState.classList.remove('d-none');
-    logList.innerHTML = '';
+    // Estado visual
+    resultsList && (resultsList.innerHTML = '');
+    logList && (logList.innerHTML = '');
     setProgress(0);
-    runHint.textContent = '';
-    statusArea.textContent = '';
+    runHint && (runHint.textContent = '');
+    if (runLabel)  runLabel.textContent = 'Ejecutando…';
+    if (runBanner) runBanner.className = 'alert alert-info d-flex align-items-center';
+    runState && runState.classList.remove('d-none');
+    btnDownload && btnDownload.classList.add('d-none');
 
-    // Llama al backend
+    // Congelamos la planificación para calcular % sobre ese total
+    runPlan = [...testQueue];
+
+    // Llamamos al backend
     const r = await fetch('/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ order, patient })
+      body: JSON.stringify({ order: runPlan })
     });
     const data = await r.json();
     if (!data.ok) {
@@ -110,93 +145,221 @@
       return;
     }
 
-    // Empieza el polling de estado
-    pollStatus(order);
+    // Polling
+    if (pollingTimer) clearInterval(pollingTimer);
+    pollingTimer = setInterval(pollTick, 800);
   }
 
-  // ---- STATUS POLLING ----
-  async function pollStatus(order) {
-    const total = order.length;
-    const doneSet = new Set();
+  // ---------- Polling de estado ----------
+  async function pollTick() {
+    try {
+      const r = await fetch('/status');
+      const { estado, registro } = await r.json();
 
-    const timer = setInterval(async () => {
-      try {
-        const r = await fetch('/status');
-        const { estado, registro } = await r.json();
-
-        // pinta status “raw”
-        statusArea.textContent = JSON.stringify(estado, null, 2);
-
-        // pista/hint
-        const current = estado.current || estado.pruebas_completadas?.slice(-1)[0] || '';
-        runHint.textContent = current ? `Ejecutando: ${current}` : '';
-
-        // progreso
-        const done = estado.pruebas_completadas?.length || 0;
-        const pct = Math.round((done / total) * 100);
-        setProgress(pct);
-
-        // log (solo nuevas líneas)
-        if (Array.isArray(registro)) {
-          registro.slice(-5).forEach(line => {
-            // opcional: podrías controlar duplicados si quieres
-          });
-        }
-
-        // “logs” por pruebas completadas (evita duplicar)
-        (estado.pruebas_completadas || []).forEach(k => {
-          if (!doneSet.has(k)) {
-            doneSet.add(k);
-            addLog(`✔ Finalizada: ${k}`);
-          }
-        });
-
-        if (!estado.ejecutando) {
-          addLog('🏁 Secuencia completada.');
-          clearInterval(timer);
-          // refresca histórico
-          loadHistory();
-        }
-      } catch (e) {
-        addLog('Error consultando estado: ' + e.message, true);
-        clearInterval(timer);
+      // Logs (últimas líneas)
+      if (Array.isArray(registro) && logList) {
+        // opcional: podrías filtrar duplicados, por simplicidad mostramos todo en el <ul>
+        // para evitar crecer sin límite, puedes limpiar cada X tick si quieres
+        // aquí no duplicamos: limpiamos y rellenamos con las últimas 50
+        const last = registro.slice(-50);
+        logList.innerHTML = '';
+        last.forEach(line => addLog(line));
       }
-    }, 1000);
+
+      // Progreso
+      const done = (estado?.pruebas_completadas || []).length;
+      const total = runPlan.length || 1;
+      const pct = Math.round((done / total) * 100);
+      setProgress(pct);
+
+      // Pista de ejecución
+      if (runHint) {
+        const current = estado?.current || (estado?.pruebas_completadas || [])[done - 1] || '';
+        runHint.textContent = current ? `Ejecutando: ${labelOf(current)}` : '';
+      }
+
+      // Resultados
+      renderResults(estado?.resultados || []);
+
+      // Fin
+      if (!estado?.ejecutando) {
+        finishedUI();
+        clearInterval(pollingTimer);
+        pollingTimer = null;
+        // Carga histórico
+        loadHistory();
+      }
+    } catch (e) {
+      addLog('Error consultando estado: ' + (e?.message || e), true);
+      if (pollingTimer) clearInterval(pollingTimer);
+      pollingTimer = null;
+    }
   }
 
-  // ---- HISTORY ----
-  async function loadHistory() {
-    const r = await fetch('/history');
-    const data = await r.json();
-    if (!Array.isArray(data.filas)) {
-      historyBody.innerHTML = `<tr><td colspan="4" class="text-muted">Sin datos</td></tr>`;
-      return;
-    }
-    historyBody.innerHTML = '';
-    data.filas.forEach(row => {
-      const pruebas = (row.pruebas || []).map(p => `${p.prueba} (${p.puntuacion})`).join(', ');
-      const paciente = row.paciente?.nombre || '-';
-      const tr = document.createElement('tr');
-      tr.innerHTML = `<td>${row.fecha}</td><td>${row.hora}</td><td>${paciente}</td><td>${pruebas}</td>`;
-      historyBody.appendChild(tr);
+  function finishedUI(){
+    setProgress(100);
+    if (runLabel)  runLabel.textContent = 'Finalizado';
+    if (runBanner) runBanner.className = 'alert alert-success d-flex align-items-center';
+    if (btnDownload) btnDownload.classList.remove('d-none');
+  }
+
+  // ---------- Resultados (incluye entrada numérica para Audición P2) ----------
+  function renderResults(resultados){
+    if (!resultsList) return;
+
+    // Guardar valores temporales de inputs Audición si estaban siendo escritos
+    const prevInputs = {};
+    resultsList.querySelectorAll('input[data-audicion-input="1"]').forEach(inp => {
+      prevInputs[inp.id] = inp.value;
+    });
+
+    resultsList.innerHTML = "";
+
+    (resultados || []).forEach((r, idx) => {
+      const li = document.createElement("li");
+      li.className = 'list-group-item';
+
+      const hora = r.hora || '';
+      const etiqueta = LABELS[r.prueba] || (r.prueba || '').toUpperCase();
+      const nota   = (r.puntuacion === null || typeof r.puntuacion === 'undefined') ? '—' : r.puntuacion;
+
+      let html = `<div><strong>${hora}</strong> · ${etiqueta} → <b>${nota}</b> /10</div>`;
+
+      if (r.prueba === 'audicion') {
+        const d = r.detalles || {};
+        const notaP1 = (d.nota_p1 !== undefined) ? d.nota_p1 : '—';
+        const notaP2 = (d.nota_p2 !== undefined) ? d.nota_p2 : '—';
+
+        // Subnotas (sin métricas crudas)
+        html += `
+          <div class="mt-1 text-muted">
+            Nota P1: <b>${notaP1}</b> /10 · Nota P2: <b>${notaP2}</b> /10
+          </div>
+        `;
+
+        const yaRespondido = !!(r.respuesta_usuario);
+        const necesita = d.requiere_input && !yaRespondido;
+
+        if (necesita) {
+          const schema = d.input_schema || {};
+          const campo = (schema.campos && schema.campos[0]) ||
+            {name:"p2_contados_paciente",label:"¿Cuántos pitidos escuchaste en la PRUEBA 2?", type:"number"};
+          const inputId = `aud_${idx}_${campo.name}`;
+
+          html += `
+            <div class="mt-2 p-2 border rounded-3">
+              <div class="fw-semibold mb-1">${schema.titulo || 'Audición – Respuesta del paciente (P2)'}</div>
+              <div class="text-muted mb-2">${schema.descripcion || ''}</div>
+              <div class="mb-2" style="max-width:260px;">
+                <label class="form-label">${campo.label || 'Respuesta'}</label>
+                <input
+                  type="${campo.type || 'number'}"
+                  id="${inputId}"
+                  data-audicion-input="1"
+                  class="form-control"
+                  min="${campo.min ?? 0}"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                />
+              </div>
+              <button class="btn btn-sm btn-primary" onclick="enviarRespuestaAudicion(${idx}, '${campo.name}', '${inputId}')">
+                Guardar
+              </button>
+            </div>
+          `;
+
+          li.innerHTML = html;
+          resultsList.appendChild(li);
+
+          const inp = document.getElementById(inputId);
+          if (inp) {
+            if (prevInputs[inputId] !== undefined) inp.value = prevInputs[inputId];
+            inp.addEventListener('keydown', (ev) => {
+              if (ev.key === 'Enter') {
+                enviarRespuestaAudicion(idx, campo.name, inputId);
+              }
+            });
+          }
+          return;
+        } else if (yaRespondido) {
+          const v = r.respuesta_usuario || {};
+          if (typeof v.p2_contados_paciente !== 'undefined') {
+            html += `<div class="mt-1">✅ Respuesta guardada (P2): <b>${v.p2_contados_paciente}</b></div>`;
+          }
+        }
+      }
+
+      li.innerHTML = html;
+      resultsList.appendChild(li);
     });
   }
 
-  async function clearHistory() {
-    if (!confirm('¿Seguro que quieres limpiar todo el histórico?')) return;
-    const r = await fetch('/history/clear', { method: 'POST' });
-    const data = await r.json();
-    if (data.ok) loadHistory();
+
+  // Exponer para el onclick del HTML
+  window.enviarRespuestaAudicion = async function (index, fieldName, inputId){
+    const el = document.getElementById(inputId);
+    if (!el) return alert("No se encuentra el campo.");
+    const raw = (el.value || '').trim();
+    if (raw === '') return alert("Introduce un número, por favor.");
+    const val = Number(raw);
+    if (!Number.isFinite(val) || val < 0) return alert("Valor inválido.");
+
+    await fetch("/answer", {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({ index, values: { [fieldName]: val } })
+    });
+
+    setTimeout(pollTick, 200);
+  };
+
+  // ---------- Histórico ----------
+  async function loadHistory(){
+    if (!historyBody) return;
+    try {
+      const r = await fetch("/history");
+      const j = await r.json();
+      const filas = Array.isArray(j.filas) ? j.filas : [];
+      historyBody.innerHTML = '';
+      if (!filas.length) {
+        historyBody.innerHTML = `<tr><td colspan="4" class="text-muted">Sin datos</td></tr>`;
+        return;
+      }
+      filas.forEach(row => {
+        const pruebas = (row.pruebas || []).map(p => `${labelOf(p.prueba)} (${(p.puntuacion ?? '—')})`).join(', ');
+        const paciente = row.paciente?.nombre || row.paciente?.apellidos || row.paciente?.id || '-';
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${row.fecha || ''}</td><td>${row.hora || ''}</td><td>${paciente}</td><td>${pruebas}</td>`;
+        historyBody.appendChild(tr);
+      });
+    } catch (e) {
+      historyBody.innerHTML = `<tr><td colspan="4" class="text-danger">Error cargando histórico</td></tr>`;
+    }
   }
 
-  // ---- Eventos UI ----
-  if (btnStart)  btnStart.addEventListener('click', startSequence);
-  if (btnClear)  btnClear.addEventListener('click', () => { selectedList.innerHTML = ''; setProgress(0); logList.innerHTML = ''; runState.classList.add('d-none'); });
-  if (btnHistory) btnHistory.addEventListener('click', loadHistory);
-  if (btnClearHist) btnClearHist.addEventListener('click', clearHistory);
+  async function clearHistory(){
+    if (!confirm("¿Borrar todo el histórico? Esta acción no se puede deshacer.")) return;
+    await fetch("/history/clear", {method:"POST"});
+    await loadHistory();
+  }
 
-  // ---- Init ----
-  renderAvailable();
-  initDnD();
+  // ---------- PDF ----------
+  async function downloadPDF(){
+    window.open('/report/pdf', '_blank');
+  }
+
+
+  // ---------- Eventos ----------
+  if (btnStart)     btnStart.addEventListener('click', startSequence);
+  if (btnClear)     btnClear.addEventListener('click', () => { clearQueue(); setProgress(0); logList && (logList.innerHTML=''); runState && runState.classList.add('d-none'); });
+  if (btnHistory)   btnHistory.addEventListener('click', loadHistory);
+  if (btnClearHist) btnClearHist.addEventListener('click', clearHistory);
+  if (btnDownload)  btnDownload.addEventListener('click', downloadPDF);
+
+
+  // ---------- Init ----------
+  loadUser();
+  renderQueue();
+  enableStartIfReady();
   loadHistory();
 })();

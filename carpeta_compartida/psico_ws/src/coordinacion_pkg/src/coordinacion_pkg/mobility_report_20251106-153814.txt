@@ -1,0 +1,11 @@
+Informe de movilidad — 2025-11-06 15:40:06
+Tiempo analizado (válido): 30 s
+Nota final: 73/100
+
+Resultado global: 73/100 — APTO.
+Tronco (inclinación lateral media: 2.1°): alineación lateral excelente.
+Tronco (flexión anterior/pitch medio: 0.0°): buena extensión dorsal (sin chepa).
+Trayectoria (zigzag std normalizado: 0.047): zigzag moderado; posible inestabilidad leve.
+Marcha (asimetría amplitud 0.38, temporal 0.15): asimetría moderada; posible marcha antálgica.
+Recomendaciones orientativas: pruebas de equilibrio estático y dinámico; valorar técnica de marcha y posibles molestias articulares.
+Aviso: este informe es orientativo y **no constituye diagnóstico médico**.
