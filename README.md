@@ -13,14 +13,14 @@
 > **Índice**
 
 - [1. Resumen del problema biomedico](#1-resumen-del-problema-biomedico)  
-  - [1.1. Ámbito de evaluación](#11-ámbito-de-evaluación)  
-  - [1.2. Descripción general del sistema](#12-descripción-general-del-sistema)  
-  - [1.3. Justificación y valor biomédico](#13-justificación-y-valor-biomédico)  
-  - [1.4. Requisitos funcionales](#14-requisitos-funcionales)  
-  - [1.5. Capacidades técnicas](#15-capacidades-técnicas)  
-  - [1.6. Resultado esperado](#16-resultado-esperado)  
+  - [1.1) Ámbito de evaluación](#11-ámbito-de-evaluación)  
+  - [1.2) Descripción general del sistema](#12-descripción-general-del-sistema)  
+  - [1.3) Justificación y valor biomédico](#13-justificación-y-valor-biomédico)  
+  - [1.4) Requisitos funcionales](#14-requisitos-funcionales)  
+  - [1.5) Capacidades técnicas](#15-capacidades-técnicas)  
+  - [1.6) Resultado esperado](#16-resultado-esperado)  
 - [2. Arquitectura del sistema](#2-arquitectura-del-sistema)  
-  - [2.a) Diagrama general del sistema](#2a-diagrama-general-del-sistema)  
+  - [2.a) Diagrama general del sistema](#2a-diagrama-general-del-sistema-y-descripción-de-los-principales-módulos-funcionales)
   - [2.b) Especificación de componentes de hardware](#2b-especificación-de-componentes-de-hardware)  
   - [2.c) Esquema preliminar de interfaz de usuario (UIUX) y flujo de interacción con el sistema](#2c-esquema-preliminar-de-interfaz-de-usuario-uiux-y-flujo-de-interacción-con-el-sistema)  
 - [3. Diseño de software y comunicación](#3-diseño-de-software-y-comunicación)  
@@ -39,14 +39,14 @@
 
 ## 1. Resumen del problema biomedico
 
-> **Objetivo:** diseñar un sistema robótico con **TIAGo** que realice de forma **automatizada** una evaluación psicotécnica de capacidades **sensoriales y motrices** en un entorno clínico (similar a las pruebas para el **carnet de conducir**), generando un **informe estandarizado** a partir de datos objetivos.
+> **Objetivo:** diseñar un sistema robótico con TIAGo que realice de forma automatizada una evaluación psicotécnica de capacidades sensoriales y motrices en un entorno clínico (similar a las pruebas para el carnet de conducir), generando un informe estandarizado a partir de datos objetivos.
 
 ### 1.1. Ámbito de evaluación
-- **Vista**
-- **Oído**
-- **Movimiento y coordinación**
-- **Velocidad de reflejos**
-- **Memoria a corto plazo**
+- Vista
+- Oído
+- Movimiento y coordinación
+- Velocidad de reflejos
+- Memoria a corto plazo
 
 ### 1.2. Descripción general del sistema
 - **Rol de TIAGo**  
@@ -54,9 +54,9 @@
 - **Unidad auxiliar (Raspberry Pi 3B)**  
   Gestiona **pulsadores, LEDs, buzzer y pantalla LCD** para pruebas de **reflejos** y **memoria**.
 - **Flujo básico**  
-  El robot guía al paciente → se ejecutan las pruebas → se **registran y procesan** los datos → se **genera un informe** con resultados y métricas clave.
+  El robot guía al paciente → se ejecutan las pruebas → se registran y procesan los datos → se genera un informe con resultados y métricas clave.
 - **Restricción relevante**  
-  Las pruebas de reflejos y memoria dependen de **sensórica externa** en la Raspberry Pi (TIAGo no dispone de esos periféricos de serie).
+  Las pruebas de reflejos y memoria dependen de sensórica externa en la Raspberry Pi (TIAGo no dispone de esos periféricos de serie).
 
 ### 1.3. Justificación y valor biomédico
 - **Precisión y estandarización**: protocolos reproducibles con control milimétrico del *timing* y registro automático.
@@ -64,7 +64,7 @@
 - **Reducción de errores**: minimiza variabilidad inter-evaluador y sesgos humanos.
 - **Mejor experiencia del paciente**: interacción guiada, consistente y potencialmente menos estresante.
 
-> **Campo emergente**: la robótica clínica se ha centrado históricamente en **rehabilitación/asistencia**; su aplicación a **evaluaciones psicotécnicas automatizadas** aporta **innovación** y **trazabilidad objetiva**.
+> **Campo emergente**: la robótica clínica se ha centrado históricamente en rehabilitación/asistencia; su aplicación a evaluaciones psicotécnicas automatizadas aporta innovación y trazabilidad objetiva.
 
 ---
 
@@ -73,7 +73,7 @@
 | Módulo | Descripción | Detalles operativos |
 |---|---|---|
 | **Test de Reflejos** | Pulsación de botón iluminado | Secuencias aleatorias, niveles crecientes (menos tiempo de respuesta)|
-| **Test de Memoria (corto plazo)** | Repetición de secuencias de LEDs | Longitud de secuencia creciente, **validación** y **registro de aciertos/fallos** |
+| **Test de Memoria (corto plazo)** | Repetición de secuencias de LEDs | Secuencias aleatorias, niveles crecientes (secuencias cada vez mas largas) |
 | **Prueba de Vista** | Estímulos visuales | Presentación en pantalla/tabla; Diagnostico capacidad visual del paciente |
 | **Prueba de Oído** | Estímulos auditivos (beeps) | Variación de frecuencia/volumen, respuesta del usuario |
 | **Evaluación psicomotora** | Marcha y postura con cámara de TIAGo | Detección de desviaciones/cambios bruscos |
@@ -90,7 +90,7 @@
 **Software**
 - **ROS 1** para comunicación y orquestación de nodos (TIAGo ↔ Raspberry Pi).
 - **Python** para lógica de pruebas, manejo de GPIOs...
-- **Visión por computador (opcional)**: uso de **OpenCV** para análisis de postura y marcha.
+- **Visión por computador**: uso de OpenCV para análisis de postura y marcha.
 
 ---
 
@@ -101,8 +101,63 @@
 
 ## 2. Arquitectura del sistema
 
-### 2.a) Diagrama general del sistema
-### 2.b) Especificación de componentes de hardware
+### 2.a Diagrama general del sistema y descripción de los principales módulos funcionales
+#### Diagrama general del sistema
+#### Descripción de los principales módulos funcionales
+
+##### Paquete `rpi_pkg`
+
+Este paquete agrupa todas las funcionalidades que se ejecutan de forma externa en la **Raspberry Pi 3B**. Su propósito principal es gestionar y ejecutar las pruebas psicotécnicas de reflejos y memoria a corto plazo.
+
+**Arquitectura de Control:**
+> La lógica de las pruebas (scripts de Python) reside en la Raspberry Pi. Un servidor de acciones ROS (`servidor_memoria.py`) se ejecuta en la Pi y espera peticiones. Desde el `web_server` principal, el usuario selecciona las pruebas a realizar. El `web_server` envía un *goal* (objetivo) al servidor de acciones, indicando qué pruebas ejecutar y en qué orden. El servidor de acciones se encarga de lanzar los scripts correspondientes (`reflejos.py`, etc.) cuando llega su turno.
+
+---
+
+###### 1. Prueba de Reflejos
+
+**Script:** `reflejos.py`
+
+**Descripción Funcional:**
+Esta prueba evalúa la capacidad de reacción del paciente.
+
+* **Estímulo:** El sistema enciende LEDs en pulsadores distribuidos de forma aleatoria.
+* **Acción:** El paciente debe pulsar el botón correspondiente al LED que se ha encendido.
+* **Evaluación:** Se mide la precisión de la respuesta.
+* **Niveles:** Cuando el paciente supera un nivel, avanza al siguiente. En cada nuevo nivel, la velocidad a la que se encienden los LEDs es mayor, incrementando la dificultad.
+
+**Implementación:**
+* Este script es invocado por el servidor de acciones `servidor_memoria.py` cuando recibe la orden correspondiente desde el `web_server`.
+
+---
+
+###### 2. Prueba de Memoria a Corto Plazo
+
+**Descripción Funcional:**
+Esta prueba evalúa la capacidad de memoria a corto plazo del paciente.
+
+* **Estímulo:** El sistema presenta una secuencia de LEDs que se encienden y apagan, uno tras otro, de forma aleatoria.
+* **Acción:** El paciente debe repetir la secuencia, pulsando los botones en el mismo orden exacto en que se encendieron.
+* **Evaluación:** El sistema valida si la secuencia introducida por el paciente es correcta.
+* **Niveles:** Al superar un nivel, el paciente avanza al siguiente. En cada nuevo nivel, se añade un LED adicional a la secuencia, incrementando progresivamente la dificultad.
+
+**Implementación:**
+* Al igual que la prueba de reflejos, esta funcionalidad es gestionada e invocada por el servidor de acciones `servidor_memoria.py`.
+
+---
+
+###### 3. Utilería: Estado de Pulsador
+
+**Script:** `estado_pulsador.py`
+
+**Descripción:**
+Este script no es una prueba psicotécnica, sino un nodo de utilidad que se ejecuta de forma independiente para dar soporte a *otros* módulos (como el módulo de audición).
+
+* **Función:** Publica de forma constante en un *topic* de ROS el estado (pulsado/no pulsado) de un pulsador específico de la Raspberry Pi.
+* **Caso de Uso:** Se utiliza en una de las pruebas del módulo de audición. En dicha prueba, el paciente debe presionar este pulsador específico en el momento en que escucha un pitido emitido por el robot TIAGO.
+* **Ayuda Visual:** Para que el usuario pueda identificar fácilmente cuál de los 6 pulsadores de la Raspberry Pi debe utilizar para la prueba de audición, el LED asociado a ese pulsador se programa para que permanezca iluminado de forma fija durante toda la duración de esa prueba.
+
+### 2.b Especificación de componentes de hardware
 
 En este apartado se detallan los componentes físicos que formarán el sistema robótico de evaluación psicotécnica, distinguiendo entre el robot base TIAGo, la unidad auxiliar basada en Raspberry Pi y el resto de periféricos y sistemas de comunicación. Toda la arquitectura está pensada para poder desplegarse en un entorno clínico controlado.
 
@@ -110,7 +165,7 @@ En este apartado se detallan los componentes físicos que formarán el sistema r
 
 El robot principal del sistema es **TIAGo** (PAL Robotics), en la configuración disponible en el laboratorio:
 
-- **Plataforma móvil sobre ruedas**: base omnidireccional/diferencial para desplazarse de forma autónoma en un entorno interior controlado.
+- **Plataforma móvil sobre ruedas**: base para desplazarse de forma autónoma en un entorno interior controlado.
 - **Computador interno**:
   - PC industrial integrado con soporte para **ROS 1**.
   - Conectividad de red (Ethernet/WiFi) para integrarse en la red del laboratorio.
@@ -126,7 +181,7 @@ El robot principal del sistema es **TIAGo** (PAL Robotics), en la configuración
   - Láser/scan 2D y  cámara de profundidad para navegación segura en el entorno.
   - Sensores de seguridad (bumpers, E-stop de hardware).
 
-TIAGo actúa como **plataforma central de interacción con el paciente**, guía la sesión, presenta instrucciones y coordina las diferentes pruebas psicotécnicas.
+TIAGo actúa como plataforma central de interacción con el paciente, guía la sesión, presenta instrucciones y coordina las diferentes pruebas psicotécnicas.
 
 #### Unidad auxiliar de pruebas psicotécnicas (Raspberry Pi)
 
@@ -134,7 +189,7 @@ Para las pruebas de **reflejos** y **memoria a corto plazo** se utilizará una u
 
 - **Raspberry Pi 3 Model B**
   - Sistema operativo Linux con soporte para ROS y librerías de control de GPIO.
-  - Conectividad **Ethernet/WiFi** para comunicarse con el PC del TIAGo mediante ROS 1.
+  - Conectividad WiFi para comunicarse con el PC del TIAGo mediante ROS 1.
 
 
 #### Sensores
@@ -174,10 +229,10 @@ Los actuadores incluyen tanto los del propio robot TIAGo como los elementos exte
 
 | Actuador              | Conexión       | Función                                          | Uso principal                                             |
 |-----------------------|----------------|--------------------------------------------------|-----------------------------------------------------------|
-| LEDs (x N, ej. 6)     | GPIO con resistencias | Estímulos luminosos individuales por pulsador | Test de reacción y test de memoria (secuencias de LEDs)   |
-| Zumbador / Buzzer     | GPIO PWM/digital | Señales acústicas simples (beeps)             | Estímulos auditivos adicionales y refuerzo del feedback   |
+| LEDs   | GPIO  | Estímulos luminosos individuales por pulsador | Test de reacción y test de memoria (secuencias de LEDs)   |
+| Zumbador / Buzzer     | PWM | Señales acústicas simples (beeps)             | Estímulos auditivos adicionales y refuerzo del feedback   |
+| PANTALLA LCD 16X2     | I2C | Muestra mensajes por pantalla           | Feedback al paciente mientras realiza las pruebas de reflejos y memoria   |
 
-Estos actuadores permiten generar estímulos bien controlados en términos de **timing** y **localización física**, claves para medir con precisión los tiempos de reacción y la memoria motriz.
 
 #### Periféricos y sistemas de comunicación
 
@@ -193,7 +248,7 @@ Para completar el sistema se consideran los siguientes periféricos y enlaces de
 - **Red local del laboratorio (LAN/WiFi)**:
   - Interconexión entre:
     - PC interno de TIAGo (nodos ROS 1 principales).
-    - Raspberry Pi 3B (unidad de pruebas psicotécnicas).
+    - Raspberry Pi 3B.
     - Tablet del evaluador (interfaz de usuario y herramientas de supervisión).
 - **Protocolo de comunicación de alto nivel**:
   - ROS 1 para intercambio de mensajes entre nodos distribuidos en TIAGo, Raspberry Pi y PC externo.
@@ -254,18 +309,7 @@ carpeta_compartida/
 ------------------------------------------------------------
 Estructura interna de los paquetes de ROS
 ------------------------------------------------------------
-
-Dentro de psico_ws/src/ todos los paquetes de ROS 1 comparten la misma estructura típica de un paquete catkin. Usando rpi_pkg como ejemplo (es análogo para audicion_pkg, vision_pkg, coordinacion_pkg, etc.):
-```text
-psico_ws/src/rpi_pkg/
-├─ action/
-├─ include/rpi_pkg/
-├─ launch/
-├─ src/rpi_pkg/
-├─ CMakeLists.txt
-├─ package.xml
-└─ setup.py
-```
+Dentro de psico_ws/src/ todos los paquetes de ROS 1 comparten la misma estructura típica de un paquete catkin. 
 Descripción de cada elemento:
 
 action/
@@ -312,6 +356,58 @@ En resumen, esta estructura uniforme en todos los paquetes (audicion_pkg, vision
   - Localizar rápidamente la lógica de cada prueba o módulo.
   - Trabajar en equipo sin confusiones sobre dónde va cada cosa.
   - Extender el sistema con nuevos nodos o acciones manteniendo siempre el mismo patrón de organización.
+    
+### Estructura Paquete rpi_pkg:
+```text
+psico_ws/src/rpi_pkg/
+├─ action/
+│  ├─ Memoria.action
+│  └─ Reflejos.action
+├─ include/
+│  └─ rpi_pkg/
+├─ launch/
+├─ src/
+│  └─ rpi_pkg/
+│     ├─ .gitkeep
+│     ├─ estado_pulsador.py
+│     ├─ grove_rgb_lcd.py
+│     ├─ memoria.py
+│     ├─ reflejos.py
+│     ├─ servidor_memoria.py
+│     └─ servidor_reflejos.py
+├─ CMakeLists.txt
+├─ package.xml
+└─ setup.py
+```
+### Estructura Paquete audicion_pkg:
+```text
+psico_ws/src/audicion_pkg/
+├─ action/
+│  ├─ Audicion.action
+├─ include/
+│  └─ audicion_pkg/
+├─ launch/
+├─ src/
+│  └─ audicion_pkg/
+│     ├─ .gitkeep
+│     ├─ __init__.py
+│     ├─ audicion_action.py
+│     ├─ cliente_action_audicion.py
+│     ├─ notasIMPORTANTES.txt
+│     ├─ prueba2.py
+│     └─ pruba_audicion.py
+│     └─ speaker.py
+├─ CMakeLists.txt
+├─ package.xml
+└─ setup.py
+```
+### Estructura Paquete coordinacion_pkg:
+### Estructura Paquete face_recognition_pkg:
+### Estructura Paquete mover_pkg:
+### Estructura Paquete vision_pkg:
+### Estructura Paquete web_server_pkg:
+
+
 ###  3.c) Descripción de posibles contenedores Docker y dependencias del entorno.
 
 ## 4. Análisis de viabilidad técnica
@@ -319,7 +415,47 @@ En resumen, esta estructura uniforme en todos los paquetes (audicion_pkg, vision
 > **Objetivo:** identificar las principales **limitaciones técnicas** del sistema (alcance, precisión, tiempo de respuesta y compatibilidad) y definir una **estrategia de mitigación** y **pruebas iniciales** para validarlo en el entorno real.
 
 ### 4.a) Identificación de posibles limitaciones técnicas (alcance, precisión, tiempo de respuesta, compatibilidad).
+#### En cuanto a la Raspberry pi 3B:
+- Limitaciones de rendimiento en la Raspberry Pi 3B con Docker:
+Inicialmente se planteó ejecutar el nodo de ROS 1 de la Raspberry dentro de un contenedor Docker, con la idea de aislar dependencias y facilitar la reproducibilidad del entorno. En la práctica, la combinación Raspberry Pi 3B + Docker + ROS 1 ha resultado muy exigente a nivel computacional.
+La Pi 3B, con CPU y memoria limitadas, mostraba lentitud general del sistema, mayor tiempo de arranque de los contenedores y pequeños retardos en la ejecución de los nodos, lo que afecta directamente al tiempo de respuesta de la prueba de reflejos (encendido de LEDs y lectura de pulsadores).
+- Problemas de acceso a los GPIO desde el contenedor:
+Aunque se consiguió establecer comunicación con la Raspberry a través del contenedor, aparecieron problemas persistentes para acceder a los pines GPIO desde Docker.
+En concreto:
+  - Dificultades con el mapeo de dispositivos y directorios del sistema (/dev, /sys, etc.) dentro del contenedor.
+
+  - Inconsistencias en el mapeo de los pines físicos a los números de GPIO empleados por las librerías de control, que impedían un funcionamiento fiable de los LEDs y pulsadores.
+
+  - Riesgo de que pequeños cambios en la configuración del contenedor rompieran el acceso a los pines, comprometiendo la fiabilidad de la prueba.
+- Compatibilidad del sistema operativo con ROS 1:
+La Raspberry estaba originalmente configurada con Raspberry Pi OS (Debian). Aunque es posible ejecutar ROS 1 sobre esta plataforma, la integración con Docker y la disponibilidad de paquetes precompilados para ROS 1 en esta arquitectura complicaban la instalación y el mantenimiento del entorno.
+Esto introducía una limitación de compatibilidad que aumentaba el riesgo de errores, especialmente al trabajar con versiones y dependencias específicas para TIAGO.
+
+En conjunto, estas limitaciones hacían que la solución basada en Docker sobre Raspberry Pi 3B no fuera suficientemente robusta ni determinista para un sistema psicotécnico que debe medir tiempos de reacción con cierta precisión y ofrecer un comportamiento estable durante las pruebas.
+
 ### 4.b) Estrategia de mitigación y pruebas iniciales.
+#### En cuanto a la Raspberry pi 3B:
+Para mitigar los problemas detectados y asegurar la viabilidad técnica del sistema, se ha optado por simplificar la arquitectura en la Raspberry Pi 3B, renunciando al uso de Docker en este dispositivo y pasando a una instalación nativa de ROS 1:
+- Eliminación de Docker en la Raspberry Pi:
+Aunque ya se disponía de un Dockerfile y de la infraestructura preparada para ejecutar ROS 1 dentro de un contenedor, se ha tomado la decisión de retirar todo lo relacionado con Docker en la Raspberry.
+De este modo:
+  - Se eliminan las capas de abstracción que dificultaban el acceso a los GPIO.
+  - Se reduce la carga computacional sobre la Pi 3B, mejorando su tiempo de respuesta y la fluidez de ejecución de los nodos.
+- Cambio de sistema operativo e instalación directa de ROS 1
+Como parte de la estrategia de mitigación, se ha reinstalado por completo el sistema operativo de la Raspberry Pi 3B:
+  - Se ha sustituido Raspberry Pi OS (Debian) por Ubuntu 20.04, distribución mejor soportada por ROS 1 Noetic.
+  - Sobre Ubuntu 20.04 se ha instalado ROS 1 de forma nativa, sin contenedores, y se ha configurado un workspace específico para el paquete rpi_pkg y el resto de nodos de la prueba de reflejos.
+- Resultados de las pruebas iniciales en el entorno real:
+Tras esta reconfiguración se han realizado pruebas de integración con el robot TIAGO y con el hardware de la prueba psicotécnica:
+  - La Raspberry Pi accede ahora directamente a los pines GPIO, sin problemas de mapeo ni de permisos, utilizando las librerías previstas para LEDs y pulsadores.
+  - Se han comprobado tiempos de encendido de LEDs y detección de pulsaciones consistentes y sin retardos apreciables, adecuados para la evaluación de reflejos.
+  - La comunicación entre la Raspberry y TIAGO mediante ROS 1 se ha estabilizado, pudiendo lanzar las pruebas desde TIAGO y recibir los resultados sin incidencias.
+- Impacto en la escalabilidad y justificación de la decisión:
+Es cierto que renunciar a Docker en la Raspberry Pi reduce la portabilidad y la escalabilidad futura del proyecto (por ejemplo, sería más complejo replicar exactamente el entorno en otra Raspberry o migrar a otro hardware sin rehacer parte de la instalación).
+Sin embargo, para el alcance actual del proyecto, priorizar:
+  - La fiabilidad en tiempo real
+  - La precisión de las medidas de reacción
+  - La simplicidad de mantenimiento: resulta más crítico que disponer de un entorno completamente contenedorizado.
 ## 5. Cronograma de desarrollo
 ### 5.a) Plan temporal desde el Hito 3 hasta la entrega final
 ### 5.b) Reparto de responsabilidades actualizado, con enfoque colaborativo.
