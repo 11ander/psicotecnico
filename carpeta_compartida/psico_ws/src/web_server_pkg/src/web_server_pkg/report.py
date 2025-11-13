@@ -3,7 +3,7 @@
 
 """
 Generación de informe PDF de la última sesión.
-- Compatible con Python 3.8 + ReportLab recientes (parche md5 usedforsecurity).
+- Parche FIPS-safe para md5 de ReportLab (sin pasar 'usedforsecurity').
 - Logo arriba a la derecha.
 - Solo muestra NOTAS (Audición incluye Nota P1, Nota P2 y Nota final).
 """
@@ -12,18 +12,42 @@ import io
 import os
 import hashlib
 
-# --- Parche compatibilidad md5(usedforsecurity=False) en Python 3.8 ---
+# --- Parche robusto de compatibilidad md5 para ReportLab (FIPS / Py3.8) ---
+#   * NUNCA pasamos 'usedforsecurity' a hashlib.md5
+#   * Aceptamos 0/1 argumentos y cualquier **kwargs, ignorándolos.
 try:
     from reportlab.pdfbase import pdfdoc as _rl_pdfdoc
-    def _md5_compat(data=b""):
-        try:
-            return hashlib.md5(data, usedforsecurity=False)  # OK en >=3.9 con FIPS
-        except TypeError:
-            return hashlib.md5(data)  # fallback 3.8
-    _rl_pdfdoc.md5 = _md5_compat
+    from reportlab.lib import utils as _rl_utils
+
+    def _md5_no_fips(*args, **kwargs):
+        # ReportLab puede llamar:
+        #   md5()                              -> sin datos
+        #   md5(data)                          -> con bytes/str
+        #   md5(data, usedforsecurity=False)   -> con kw extra
+        #   md5(usedforsecurity=False)         -> sin datos pero con kw
+        data = b""
+        if args:
+            a0 = args[0]
+            if isinstance(a0, (bytes, bytearray)):
+                data = bytes(a0)
+            else:
+                # Convertimos a bytes por si llega str u otro tipo
+                data = str(a0).encode("utf-8", errors="ignore")
+        return hashlib.md5(data)
+
+    # Parchamos los puntos que usa ReportLab internamente
+    _rl_pdfdoc.md5 = _md5_no_fips
+    # Algunas versiones también usan utils.md5
+    try:
+        _rl_utils.md5 = _md5_no_fips  # no falla si no existe
+    except Exception:
+        pass
 except Exception:
+    # Si no podemos parchear, seguimos: en la mayoría de entornos no hará falta
     pass
 
+
+# --- ReportLab ---
 from reportlab.lib.pagesizes import A4
 from reportlab.lib import colors
 from reportlab.lib.units import mm
@@ -73,16 +97,14 @@ def build_pdf_bytes(sesion: dict, logo_path: str = "") -> bytes:
     story = []
 
     # Cabecera con logo a la derecha
-    head_cells = []
     left = Paragraph("<b>Informe de Pruebas Psicotécnicas</b>", TITLE)
     if logo_path and os.path.isfile(logo_path):
-      img = Image(logo_path, width=28*mm, height=28*mm, hAlign='RIGHT')
-      head_cells = [[left, img]]
-      t = Table(head_cells, colWidths=[None, 30*mm])
-      t.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP')]))
-      story.append(t)
+        img = Image(logo_path, width=28*mm, height=28*mm, hAlign='RIGHT')
+        t = Table([[left, img]], colWidths=[None, 30*mm])
+        t.setStyle(TableStyle([('VALIGN', (0,0), (-1,-1), 'TOP')]))
+        story.append(t)
     else:
-      story.append(left)
+        story.append(left)
 
     story.append(HRFlowable(width="100%", thickness=0.8, color=colors.HexColor("#0b5ed7")))
     story.append(Spacer(1, 6))
@@ -118,14 +140,23 @@ def build_pdf_bytes(sesion: dict, logo_path: str = "") -> bytes:
             d = p.get("detalles", {}) or {}
             nota_p1 = d.get("nota_p1", None)
             nota_p2 = d.get("nota_p2", None)
-            # Mostramos subnotas y nota final (ocultando métricas crudas)
-            filas.append([Paragraph(f"<b>{pname}</b>", BODY),
-                          Paragraph(f"Nota P1: {_nota_text(nota_p1)} /10<br/>"
-                                    f"Nota P2: {_nota_text(nota_p2)} /10<br/>"
-                                    f"<b>Nota final:</b> {_nota_text(pnota)} /10", BODY)])
+            filas.append([
+                Paragraph(f"<b>{pname}</b>", BODY),
+                Paragraph(
+                    f"Nota P1: {_nota_text(nota_p1)} /10<br/>"
+                    f"Nota P2: {_nota_text(nota_p2)} /10<br/>"
+                    f"<b>Nota final:</b> {_nota_text(pnota)} /10",
+                    BODY
+                )
+            ])
         else:
-            filas.append([Paragraph(f"<b>{pname}</b>", BODY),
-                          Paragraph(f"<b>Nota:</b> {_nota_text(pnota)} /10", BODY)])
+            filas.append([
+                Paragraph(f"<b>{pname}</b>", BODY),
+                Paragraph(f"<b>Nota:</b> {_nota_text(pnota)} /10", BODY)
+            ])
+
+    if not filas:
+        filas = [[Paragraph("<i>Sin resultados</i>", BODY), Paragraph("", BODY)]]
 
     tbl = Table(filas, colWidths=[45*mm, None], hAlign='LEFT')
     tbl.setStyle(TableStyle([

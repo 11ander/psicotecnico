@@ -1,30 +1,28 @@
-// index.js — Panel principal (cola de pruebas, progreso, resultados, histórico, PDF)
+// index.js — Panel principal (cola de pruebas, progreso, resultados, PDF)
 
 (function () {
-  // ---------- Referencias a elementos del DOM (usa ids del HTML actualizado) ----------
-  const queueListEl   = document.getElementById('queueList');              // UL de la cola seleccionada (estilo compi)
+  // ---------- Referencias a elementos del DOM ----------
+  const queueListEl   = document.getElementById('queueList');              // UL de la cola seleccionada
   const btnStart      = document.getElementById('btnStart');
   const btnClear      = document.getElementById('btnClear');
-  const runState      = document.getElementById('runState');               // Contenedor del bloque “estado de ejecución”
-  const runBanner     = document.getElementById('runBanner');              // <div class="alert ..."> dentro de runState
-  const runLabel      = document.getElementById('runLabel');               // <span> con texto “Ejecutando…” / “Finalizado”
-  const runHint       = document.getElementById('runHint');                // Subtítulo con pista (prueba actual)
-  const progressBar   = document.getElementById('progressBar');            // Barra de progreso
-  const logList       = document.getElementById('logList');                // UL de logs
-  const resultsList   = document.getElementById('results');                // UL de resultados en vivo (si existe)
-  const historyBody   = document.getElementById('historyBody');            // TBODY del histórico
-  const btnHistory    = document.getElementById('btnHistory');
-  const btnClearHist  = document.getElementById('btnClearHistory');
-  const btnDownload   = document.getElementById('btnDownload');            // Botón para descargar PDF al final
-  const userBadge     = document.getElementById('userBadge');              // Etiqueta con el usuario logado (opcional)
-  const ownerName     = document.getElementById('ownerName');              // Donde quieras replicar el nombre (opcional)
+
+  const runState      = document.getElementById('runState');               // Contenedor estado de ejecución
+  const runBanner     = document.getElementById('runBanner');              // <div class="alert ...">
+  const runLabel      = document.getElementById('runLabel');               // “Ejecutando…” / “Finalizado”
+  const runHint       = document.getElementById('runHint');                // pista (prueba actual)
+  const progressBar   = document.getElementById('progressBar');            // barra de progreso
+
+  const logList       = document.getElementById('logList');                // (opcional)
+  const resultsList   = document.getElementById('results');                // UL de resultados
+
+  const btnDownload   = document.getElementById('btnDownload');            // Descargar PDF
+  const userBadge     = document.getElementById('userBadge');              // Usuario logado (opcional)
 
   // ---------- Estado en front ----------
-  let testQueue = [];        // ¡No usar “queue” para evitar choque con window.queue (ids)!
-  let runPlan   = [];        // Copia inmutable de la cola cuando se pulsa “Empezar”
+  let testQueue = [];        // Cola seleccionada en UI
+  let runPlan   = [];        // Copia congelada al pulsar “Empezar”
   let pollingTimer = null;
 
-  // Mapeo nombre legible y estilos (coherente con el compi)
   const LABELS = { memoria: "Memoria", reflejos: "Reflejos", audicion: "Audición" };
   function labelOf(k){ return LABELS[k] || (k ? (k[0].toUpperCase()+k.slice(1)) : ''); }
   function tagClass(k){
@@ -34,7 +32,7 @@
     return 'bg-secondary-subtle text-secondary-emphasis';
   }
 
-  // ---------- Cola estilo compi (expuesta al HTML por onclick) ----------
+  // ---------- Cola estilo “compi” (expuesta al HTML) ----------
   window.addTest = function (key){
     if (!key) return;
     if (testQueue.includes(key)) return;
@@ -112,7 +110,6 @@
       const j = await r.json();
       const u = j.user || '';
       if (userBadge) userBadge.textContent = u ? `Usuario: ${u}` : '';
-      if (ownerName) ownerName.textContent = u || '—';
     } catch (e) {}
   }
 
@@ -120,7 +117,7 @@
   async function startSequence() {
     if (!testQueue.length) return;
 
-    // Estado visual
+    // Estado visual (reset)
     resultsList && (resultsList.innerHTML = '');
     logList && (logList.innerHTML = '');
     setProgress(0);
@@ -130,7 +127,7 @@
     runState && runState.classList.remove('d-none');
     btnDownload && btnDownload.classList.add('d-none');
 
-    // Congelamos la planificación para calcular % sobre ese total
+    // Congelamos la planificación
     runPlan = [...testQueue];
 
     // Llamamos al backend
@@ -158,24 +155,21 @@
 
       // Logs (últimas líneas)
       if (Array.isArray(registro) && logList) {
-        // opcional: podrías filtrar duplicados, por simplicidad mostramos todo en el <ul>
-        // para evitar crecer sin límite, puedes limpiar cada X tick si quieres
-        // aquí no duplicamos: limpiamos y rellenamos con las últimas 50
         const last = registro.slice(-50);
         logList.innerHTML = '';
         last.forEach(line => addLog(line));
       }
 
-      // Progreso
+      // Progreso (basado en runPlan si existe, si no, usa total_pruebas del backend)
       const done = (estado?.pruebas_completadas || []).length;
-      const total = runPlan.length || 1;
+      const total = (runPlan.length || estado?.total_pruebas || 1);
       const pct = Math.round((done / total) * 100);
       setProgress(pct);
 
       // Pista de ejecución
       if (runHint) {
-        const current = estado?.current || (estado?.pruebas_completadas || [])[done - 1] || '';
-        runHint.textContent = current ? `Ejecutando: ${labelOf(current)}` : '';
+        const current = estado?.current || '';
+        runHint.textContent = current ? `Ejecutando: ${labelOf(current)}` : (estado?.ejecutando ? 'Ejecutando…' : '');
       }
 
       // Resultados
@@ -186,8 +180,6 @@
         finishedUI();
         clearInterval(pollingTimer);
         pollingTimer = null;
-        // Carga histórico
-        loadHistory();
       }
     } catch (e) {
       addLog('Error consultando estado: ' + (e?.message || e), true);
@@ -200,6 +192,7 @@
     setProgress(100);
     if (runLabel)  runLabel.textContent = 'Finalizado';
     if (runBanner) runBanner.className = 'alert alert-success d-flex align-items-center';
+    runState && runState.classList.remove('d-none');
     if (btnDownload) btnDownload.classList.remove('d-none');
   }
 
@@ -294,7 +287,6 @@
     });
   }
 
-
   // Exponer para el onclick del HTML
   window.enviarRespuestaAudicion = async function (index, fieldName, inputId){
     const el = document.getElementById(inputId);
@@ -313,53 +305,58 @@
     setTimeout(pollTick, 200);
   };
 
-  // ---------- Histórico ----------
-  async function loadHistory(){
-    if (!historyBody) return;
-    try {
-      const r = await fetch("/history");
-      const j = await r.json();
-      const filas = Array.isArray(j.filas) ? j.filas : [];
-      historyBody.innerHTML = '';
-      if (!filas.length) {
-        historyBody.innerHTML = `<tr><td colspan="4" class="text-muted">Sin datos</td></tr>`;
-        return;
-      }
-      filas.forEach(row => {
-        const pruebas = (row.pruebas || []).map(p => `${labelOf(p.prueba)} (${(p.puntuacion ?? '—')})`).join(', ');
-        const paciente = row.paciente?.nombre || row.paciente?.apellidos || row.paciente?.id || '-';
-        const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${row.fecha || ''}</td><td>${row.hora || ''}</td><td>${paciente}</td><td>${pruebas}</td>`;
-        historyBody.appendChild(tr);
-      });
-    } catch (e) {
-      historyBody.innerHTML = `<tr><td colspan="4" class="text-danger">Error cargando histórico</td></tr>`;
-    }
-  }
-
-  async function clearHistory(){
-    if (!confirm("¿Borrar todo el histórico? Esta acción no se puede deshacer.")) return;
-    await fetch("/history/clear", {method:"POST"});
-    await loadHistory();
-  }
-
   // ---------- PDF ----------
   async function downloadPDF(){
     window.open('/report/pdf', '_blank');
   }
 
+  // ---------- Carga inicial (clave para --no-test) ----------
+  async function hydrateFromBackendOnLoad() {
+    // 1) Carga usuario
+    await loadUser();
+
+    // 2) Pide estado 1 vez
+    try {
+      const r = await fetch('/status');
+      if (!r.ok) return;
+      const { estado } = await r.json();
+
+      // Si ya hay resultados (seed --no-test) y no se está ejecutando, los pintamos
+      const hasResults = Array.isArray(estado?.resultados) && estado.resultados.length > 0;
+      if (hasResults) {
+        // Pintar resultados
+        renderResults(estado.resultados);
+
+        // UI como finalizada si no está ejecutando
+        if (!estado.ejecutando) {
+          // Progreso al 100% basado en total_pruebas si viene del backend
+          const total = estado.total_pruebas || estado.resultados.length;
+          const done  = estado.pruebas_completadas ? estado.pruebas_completadas.length : total;
+          const pct   = Math.round((done / (total || 1)) * 100);
+          setProgress(pct >= 100 ? 100 : pct);
+
+          if (runLabel)  runLabel.textContent = 'Finalizado';
+          if (runBanner) runBanner.className = 'alert alert-success d-flex align-items-center';
+          runState && runState.classList.remove('d-none');
+          if (btnDownload) btnDownload.classList.remove('d-none');
+        } else {
+          // Si por lo que sea está ejecutando (no debería con --no-test), arrancamos polling
+          if (pollingTimer) clearInterval(pollingTimer);
+          pollingTimer = setInterval(pollTick, 800);
+        }
+      }
+    } catch (_) {
+      // silencioso
+    }
+  }
 
   // ---------- Eventos ----------
   if (btnStart)     btnStart.addEventListener('click', startSequence);
   if (btnClear)     btnClear.addEventListener('click', () => { clearQueue(); setProgress(0); logList && (logList.innerHTML=''); runState && runState.classList.add('d-none'); });
-  if (btnHistory)   btnHistory.addEventListener('click', loadHistory);
-  if (btnClearHist) btnClearHist.addEventListener('click', clearHistory);
   if (btnDownload)  btnDownload.addEventListener('click', downloadPDF);
 
-
   // ---------- Init ----------
-  loadUser();
   renderQueue();
   enableStartIfReady();
-  loadHistory();
+  hydrateFromBackendOnLoad();   // <<--- IMPORTANTE para ver resultados con --no-test
 })();

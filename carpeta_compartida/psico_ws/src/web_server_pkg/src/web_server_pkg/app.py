@@ -4,7 +4,7 @@ import threading
 from datetime import datetime
 from typing import Dict, Any, Optional
 import sys
-
+import random
 from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 
 from report import build_pdf_bytes
@@ -29,6 +29,7 @@ HISTORY_CSV = DATA_DIR / "history.csv"
 
 NO_LOGIN = "--no-login" in sys.argv
 MUTE = ("--mute" in sys.argv) or (os.environ.get("PSICO_MUTE", "0") in ("1", "true", "True", "YES", "yes"))
+NO_TEST = "--no-test" in sys.argv
 
 
 app = Flask(
@@ -161,6 +162,44 @@ def save_session_csv(sesion: Dict[str, Any], csv_path: Path = HISTORY_CSV):
         w.writerow(row)
 
 
+def _seed_fake_session(nombre: str = "Prueba"):
+    """Genera una sesión ficticia con 3 pruebas y la deja lista en HISTORICO y SESION."""
+    mem = round(random.uniform(5.0, 10.0), 2)
+    ref = round(random.uniform(5.0, 10.0), 2)
+    aud_p1 = round(random.uniform(5.0, 10.0), 2)
+    aud_p2 = round(random.uniform(5.0, 10.0), 2)
+    aud_final = round((aud_p1 + aud_p2) / 2.0, 2)
+
+    ts = datetime.now()
+    sesion = {
+        "fecha": ts.strftime("%Y-%m-%d"),
+        "hora":  ts.strftime("%H:%M:%S"),
+        "paciente": {"nombre": nombre},
+        "pruebas": [
+            {"prueba": "memoria",  "puntuacion": mem,      "hora": ts.strftime("%H:%M:%S")},
+            {"prueba": "reflejos", "puntuacion": ref,      "hora": ts.strftime("%H:%M:%S")},
+            {"prueba": "audicion", "puntuacion": aud_final,"hora": ts.strftime("%H:%M:%S"),
+             "detalles": {"nota_p1": aud_p1, "nota_p2": aud_p2}}
+        ]
+    }
+
+    SESION.update({
+        "ejecutando": False,
+        "pruebas_completadas": ["memoria", "reflejos", "audicion"],
+        "resultados": list(sesion["pruebas"]),
+        "paciente": {"nombre": nombre},
+        "total_pruebas": 3,
+        "current": "",
+    })
+
+    HISTORICO.append(sesion)
+    try:
+        save_session_csv(sesion)
+    except Exception as e:
+        registrar(f"ERROR guardando CSV (seed): {e}")
+
+
+
 # ------------------- Helpers speaker / nombres -------------------
 TEST_DISPLAY = {
     "memoria": "Memoria",
@@ -183,10 +222,13 @@ def require_login():
 def inicio():
     if not require_login():
         return redirect(url_for("login"))
-    # Asegura que paciente.nombre está en sesión para mostrar en UI/Histórico
     if not SESION["paciente"].get("nombre"):
         SESION["paciente"]["nombre"] = session.get("user", "")
+    if NO_TEST and not HISTORICO:
+        _seed_fake_session(nombre=session.get("user","Prueba") or "Prueba")
     return render_template("index.html")
+
+
 
 @app.route("/login", methods=["GET"])
 def login():
@@ -200,6 +242,10 @@ def api_login():
         session["user"] = "Prueba"
         SESION["paciente"]["nombre"] = "Prueba"
         speak_async("Bienvenido de pruebas a la consulta, pase por aquí", lang_id="es_ES")
+        
+        if NO_TEST and not HISTORICO:
+            _seed_fake_session(nombre="Prueba")
+
         return jsonify(ok=True, user="Prueba")
 
     try:
@@ -364,22 +410,9 @@ def responder_resultado():
 
 @app.route("/report/latest")
 def report_latest():
-    if not require_login():
-        return jsonify(ok=False, error="No autenticado"), 401
-    if not HISTORICO:
-        return jsonify(ok=False, error="No hay sesiones en histórico"), 404
+    # Alias: reutiliza la lógica de report_pdf
+    return report_pdf()
 
-    # Última sesión finalizada
-    sesion = HISTORICO[-1]
-    logo_path = os.path.join(BASE_DIR, "static", "img", "logo-deusto.png")
-    pdf_bytes = build_pdf_bytes(sesion, logo_path)
-
-    return send_file(
-        io.BytesIO(pdf_bytes),
-        mimetype="application/pdf",
-        as_attachment=True,
-        download_name=f"informe_{sesion.get('fecha','')}_{sesion.get('paciente',{}).get('nombre','paciente')}.pdf"
-    )
 
 
 # Histórico: no exponer a UI
@@ -397,7 +430,6 @@ def limpiar_historial():
     except Exception as e:
         return jsonify(ok=False, error=str(e)), 500
 
-# Reporte PDF (nombre de función ÚNICO)
 @app.route("/report/pdf", methods=["GET"])
 def report_pdf():
     if not require_login():
@@ -421,9 +453,10 @@ def report_pdf():
         return f"Error generando PDF: {e}", 500
 
 
+
 # ------------------- Main -------------------
 if __name__ == "__main__":
     # Flags útiles:
     #   python3 app.py --no-login
-    #   python3 app.py --no-login --mute
+    #   python3 app.py --no-login --mute --no-test
     app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)
