@@ -21,6 +21,9 @@ from pruebas_client import MemoriaClient, ReflejosClient, AudicionClient
 import csv
 from pathlib import Path
 
+from checkpoint_follower_api import Follower as CheckpointFollower
+
+
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 DATA_DIR = Path(BASE_DIR) / "data"
@@ -50,6 +53,31 @@ SESION = {
 }
 REGISTRO = []
 HISTORICO = []
+
+# === Movilidad / checkpoints TIAGo ===
+PREPROGRAMMED_POINTS = {
+    "puerta":  [1.801448077821011,  -0.7272143308845652,  -0.17600744219629474, 0.9843888359238527],
+    "puerta2": [0.75413808767915,    0.6935195599805307,   0.8738231258256374,  0.48624391489489344],
+    "medio":   [3.6704948592312454, -1.8971807817955268,  -0.34134149988312906, 0.9399393493505502],
+    "fondo":   [6.128891746903331,  -2.156612477116119,  -0.100474241670117,   0.9949396598592374],
+}
+
+_FOLLOWER = None
+_FOLLOWER_LOCK = threading.Lock()
+
+def get_follower() -> CheckpointFollower:
+    global _FOLLOWER
+    with _FOLLOWER_LOCK:
+        if _FOLLOWER is None:
+            registrar("Inicializando Follower de checkpoints…")
+            _FOLLOWER = CheckpointFollower()
+        return _FOLLOWER
+
+
+
+
+
+
 
 def registrar(mensaje: str):
     hora = datetime.now().strftime("%H:%M:%S")
@@ -451,6 +479,93 @@ def report_pdf():
     except Exception as e:
         registrar(f"ERROR generando PDF: {e}")
         return f"Error generando PDF: {e}", 500
+
+
+@app.route("/admin")
+def admin_panel():
+    if not require_login():
+        return redirect(url_for("login"))
+    return render_template("admin_index.html")
+
+
+@app.route("/admin/history")
+def obtener_historial_admin():
+    if not require_login():
+        return jsonify(ok=False, error="No autenticado"), 401
+
+    filas = []
+    for ses in HISTORICO:
+        pruebas_desc = []
+        for p in ses.get("pruebas", []):
+            pk = (p.get("prueba") or "").lower()
+            nombre = TEST_DISPLAY.get(pk, pk.capitalize())
+            nota = p.get("puntuacion", None)
+            if nota is not None:
+                pruebas_desc.append(f"{nombre}: {nota}/10")
+            else:
+                pruebas_desc.append(nombre)
+
+        filas.append({
+            "fecha": ses.get("fecha", ""),
+            "hora":  ses.get("hora", ""),
+            "paciente": (ses.get("paciente") or {}).get("nombre", ""),
+            "pruebas": ", ".join(pruebas_desc),
+        })
+
+    return jsonify(ok=True, filas=filas)
+
+
+@app.route("/admin/move", methods=["POST"])
+def admin_move():
+    if not require_login():
+        return jsonify(ok=False, error="No autenticado"), 401
+
+    datos = request.get_json(force=True) or {}
+    modo = datos.get("mode")
+
+    if modo not in ("preset", "coords"):
+        return jsonify(ok=False, error="Modo inválido"), 400
+
+    # Construimos la lista de puntos a enviar [[x, y, oz, ow]]
+    puntos = []
+
+    if modo == "preset":
+        key = (datos.get("preset") or "").lower()
+        coords = PREPROGRAMMED_POINTS.get(key)
+        if not coords:
+            return jsonify(ok=False, error="Posición preprogramada desconocida"), 400
+        puntos.append(coords)
+        desc = f"preprogramada '{key}'"
+
+    else:  # modo == "coords"
+        coords = datos.get("coords") or []
+        if not isinstance(coords, list) or len(coords) != 4:
+            return jsonify(ok=False, error="coords debe ser una lista [x, y, oz, ow]"), 400
+
+        try:
+            x, y, oz, ow = [float(v) for v in coords]
+        except Exception:
+            return jsonify(ok=False, error="Las coordenadas deben ser numéricas"), 400
+
+        puntos.append([x, y, oz, ow])
+        desc = f"manual [{x:.3f}, {y:.3f}, {oz:.3f}, {ow:.3f}]"
+
+    follower = get_follower()
+
+    def worker():
+        try:
+            registrar(f"Movilidad: enviando posición {desc} al TIAGo…")
+            ok = follower.enviar_puntos(puntos)
+            if ok is False:
+                registrar("Movilidad: el Follower devolvió fallo al mover el robot.")
+            else:
+                registrar("Movilidad: movimiento completado.")
+        except Exception as e:
+            registrar(f"ERROR en movimiento de movilidad TIAGo: {e}")
+
+    threading.Thread(target=worker, daemon=True).start()
+
+    return jsonify(ok=True, message=f"Movimiento {desc} enviado al robot.")
 
 
 
