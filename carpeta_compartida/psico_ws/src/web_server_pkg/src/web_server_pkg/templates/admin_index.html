@@ -55,7 +55,7 @@
         </div>
       </div>
 
-      <!-- Movilidad TIAGo + Vídeo cámara -->
+      <!-- Movilidad TIAGo + Vídeo cámara + mapa -->
       <div class="col-12 col-lg-5">
         <div class="card shadow-sm border-0 h-100">
           <div class="card-body">
@@ -65,6 +65,9 @@
             <div class="mb-4">
               <h6 class="fw-semibold mb-2">Cámara frontal</h6>
               <div class="ratio ratio-16x9 bg-dark rounded-3 overflow-hidden shadow-sm">
+                <!--
+                  Si ves la página desde otra máquina, cambia 127.0.0.1 por la IP del PC ROS.
+                -->
                 <img
                   id="cameraStream"
                   src="http://127.0.0.1:8080/stream?topic=/xtion/rgb/image_raw&quality=80&width=640&height=360"
@@ -75,11 +78,21 @@
               </div>
               <div class="form-text mt-2">
                 Usando <code>web_video_server</code> vía <code>/stream</code> sobre el tópico
-                <code>/xtion/rgb/image_raw</code> (MJPEG en un único <code>&lt;img&gt;</code>).
+                <code>/xtion/rgb/image_raw</code>.
               </div>
             </div>
 
-
+            <!-- Bloque de mapa tipo RViz -->
+            <div class="mb-4">
+              <h6 class="fw-semibold mb-2">Mapa y posición del robot</h6>
+              <div class="bg-light border rounded-3 p-2">
+                <div id="nav2dViewer" style="width: 100%; height: 300px;"></div>
+              </div>
+              <div class="form-text mt-2">
+                Visualización 2D usando <code>nav2djs</code> (mapa de <code>/map</code> y base del TIAGo).
+                Necesita <code>rosbridge_server</code> y <code>tf2_web_republisher</code> activos.
+              </div>
+            </div>
 
             <!-- Controles de movimiento -->
             <div class="mb-3">
@@ -146,6 +159,13 @@
 </footer>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
+
+<!-- Robot Web Tools: conexión ROS + visualización 2D -->
+<script src="https://static.robotwebtools.org/EventEmitter2/current/eventemitter2.min.js"></script>
+<script src="https://static.robotwebtools.org/roslibjs/current/roslib.min.js"></script>
+<script src="https://static.robotwebtools.org/ros2djs/current/ros2d.min.js"></script>
+<script src="https://static.robotwebtools.org/nav2djs/current/nav2d.min.js"></script>
+
 <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
 </body>
 </html>
