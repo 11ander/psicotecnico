@@ -156,25 +156,25 @@ endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/rpi_pkg/msg" TYPE FILE FILES
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/ReflejosAction.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/ReflejosActionGoal.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/ReflejosActionResult.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/ReflejosActionFeedback.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/ReflejosGoal.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/ReflejosResult.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/ReflejosFeedback.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/ReflejosAction.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/ReflejosActionGoal.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/ReflejosActionResult.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/ReflejosActionFeedback.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/ReflejosGoal.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/ReflejosResult.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/ReflejosFeedback.msg"
     )
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
   file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/rpi_pkg/msg" TYPE FILE FILES
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/MemoriaAction.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/MemoriaActionGoal.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/MemoriaActionResult.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/MemoriaActionFeedback.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/MemoriaGoal.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/MemoriaResult.msg"
-    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/rpi_pkg/msg/MemoriaFeedback.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/MemoriaAction.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/MemoriaActionGoal.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/MemoriaActionResult.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/MemoriaActionFeedback.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/MemoriaGoal.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/MemoriaResult.msg"
+    "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/msg/MemoriaFeedback.msg"
     )
 endif()
 
@@ -183,31 +183,31 @@ if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/include/rpi_pkg")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/include" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/include/rpi_pkg")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/roseus/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/roseus/ros/rpi_pkg")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/roseus/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/roseus/ros/rpi_pkg")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/common-lisp/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/common-lisp/ros/rpi_pkg")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/common-lisp/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/common-lisp/ros/rpi_pkg")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/gennodejs/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/share/gennodejs/ros/rpi_pkg")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/share/gennodejs/ros" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/gennodejs/ros/rpi_pkg")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  execute_process(COMMAND "/usr/bin/python3" -m compileall "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/lib/python3/dist-packages/rpi_pkg")
+  execute_process(COMMAND "/usr/bin/python3" -m compileall "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/lib/python3/dist-packages/rpi_pkg")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/lib/python3/dist-packages/rpi_pkg" REGEX "/\\_\\_init\\_\\_\\.py$" EXCLUDE REGEX "/\\_\\_init\\_\\_\\.pyc$" EXCLUDE)
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/lib/python3/dist-packages/rpi_pkg" REGEX "/\\_\\_init\\_\\_\\.py$" EXCLUDE REGEX "/\\_\\_init\\_\\_\\.pyc$" EXCLUDE)
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)
-  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/lib/python3/dist-packages/rpi_pkg" FILES_MATCHING REGEX "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/lib/python3/dist-packages/rpi_pkg/.+/__init__.pyc?$")
+  file(INSTALL DESTINATION "${CMAKE_INSTALL_PREFIX}/lib/python3/dist-packages" TYPE DIRECTORY FILES "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/lib/python3/dist-packages/rpi_pkg" FILES_MATCHING REGEX "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/\\.private/rpi_pkg/lib/python3/dist-packages/rpi_pkg/.+/__init__.pyc?$")
 endif()
 
 if("x${CMAKE_INSTALL_COMPONENT}x" STREQUAL "xUnspecifiedx" OR NOT CMAKE_INSTALL_COMPONENT)

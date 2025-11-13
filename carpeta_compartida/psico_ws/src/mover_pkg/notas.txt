@@ -2,6 +2,7 @@
 sudo apt update
 sudo apt install ros-noetic-teleop-twist-keyboard
 sudo apt install ros-noetic-map-server
+sudo apt install ros-noetic-move-base-msgs
 
 ###### guardar mapa ######
 rosrun map_server map_saver -f path_maps_dir/nombre_mapa
@@ -31,3 +32,11 @@ navigation.rviz en gallium/share/pal_navigation_cfg_tiago/launch/rviz.launch des
                             Unreliable: false
                             Value: false
 
+
+
+########## MERGE WS (gallium+psico_ws)
+source /home/robotica_tiago/carpeta_compartida/gallium/setup.bash
+cd /home/robotica_tiago/carpeta_compartida/psico_ws
+catkin clean -y
+catkin config --no-extend --merge-devel
+catkin build
