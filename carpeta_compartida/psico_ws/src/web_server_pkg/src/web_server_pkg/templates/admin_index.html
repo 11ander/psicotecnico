@@ -65,19 +65,20 @@
             <div class="mb-4">
               <h6 class="fw-semibold mb-2">Cámara frontal</h6>
               <div class="ratio ratio-16x9 bg-dark rounded-3 overflow-hidden shadow-sm">
-
                 <img
                   id="cameraStream"
-                  src="http://127.0.0.1:8080/stream?topic=/xtion/rgb/image_raw"
+                  src="http://127.0.0.1:8080/stream?topic=/xtion/rgb/image_raw&quality=80&width=640&height=360"
                   class="w-100 h-100"
-                  alt="Snapshot cámara TIAGo"
+                  alt="Vídeo cámara TIAGo"
                   style="object-fit: cover;"
                 >
               </div>
               <div class="form-text mt-2">
-                Usando <code>web_video_server</code> vía <code>/snapshot</code> sobre el tópico <code>/xtion/rgb/image_raw</code>.
+                Usando <code>web_video_server</code> vía <code>/stream</code> sobre el tópico
+                <code>/xtion/rgb/image_raw</code> (MJPEG en un único <code>&lt;img&gt;</code>).
               </div>
             </div>
+
 
 
             <!-- Controles de movimiento -->
