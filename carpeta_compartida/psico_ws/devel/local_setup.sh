@@ -1,1 +1,0 @@
-/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/catkin_tools_prebuild/local_setup.sh

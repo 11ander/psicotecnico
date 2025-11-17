@@ -1,0 +1,12 @@
+# Goal
+bool ejecutar
+---
+# Result
+float32 score
+string[] informe
+string report_path
+string csv_path
+---
+# Feedback
+string estado
+float32 valid_elapsed

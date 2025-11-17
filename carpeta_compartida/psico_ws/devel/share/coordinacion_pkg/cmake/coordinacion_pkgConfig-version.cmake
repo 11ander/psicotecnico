@@ -1,1 +1,0 @@
-/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/coordinacion_pkg/share/coordinacion_pkg/cmake/coordinacion_pkgConfig-version.cmake

@@ -1,1 +1,0 @@
-/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/lib/pkgconfig/rpi_pkg.pc

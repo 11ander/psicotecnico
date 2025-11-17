@@ -1,0 +1,9 @@
+# face_recognition_pkg/action/FaceRecognition.action
+# Goal
+bool ejecutar
+---
+# Result
+string nombre
+---
+# Feedback
+string estado

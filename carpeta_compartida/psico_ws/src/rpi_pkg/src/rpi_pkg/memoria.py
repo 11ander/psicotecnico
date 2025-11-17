@@ -1,7 +1,7 @@
 from gpiozero import LED, Button, PWMOutputDevice
 from random import choice
 from time import sleep, time
-from grove_rgb_lcd import setText
+from .grove_rgb_lcd import setText
 
 RESULTADO_OK = None
 LONGITUD_SECUENCIA = 1  # valor inicial, se reasigna en cada nivel
@@ -10,21 +10,28 @@ LONGITUD_SECUENCIA = 1  # valor inicial, se reasigna en cada nivel
 led1 = LED(5)
 led2 = LED(16)
 led3 = LED(18)
+led4 = LED(22)  
+led5 = LED(24)   
+led6 = LED(26)  
 
 boton1 = Button(6)
 boton2 = Button(17)
 boton3 = Button(19)
+boton4 = Button(23)  
+boton5 = Button(25) 
+boton6 = Button(27) 
 
 zumbador = PWMOutputDevice(12)
 
-leds = [led1, led2, led3]
-botones = [boton1, boton2, boton3]
-niveles = [3,4,5,6,7]  # Longitud de secuencia a recordar
+leds = [led1, led2, led3, led4, led5, led6]
+botones = [boton1, boton2, boton3, boton4, boton5, boton6]
+niveles = [3, 4, 5, 6, 7]  # Longitud de secuencia a recordar
 dificultad = ["MUY FACIL", "FACIL", "INTERMEDIO", "DIFICIL", "MUY DIFICIL"]
 
 def intro(nivel):
     setText(f"PULSA PARA NIVEL{nivel + 1}: {dificultad[nivel]}")
-    while not (boton1.is_pressed or boton2.is_pressed or boton3.is_pressed):
+    while not (boton1.is_pressed or boton2.is_pressed or boton3.is_pressed or
+               boton4.is_pressed or boton5.is_pressed or boton6.is_pressed):
         sleep(0.1)
 
     for i in range(3, 0, -1):
@@ -109,6 +116,11 @@ def prueba():
 
 def test_memoria():
     global LONGITUD_SECUENCIA, RESULTADO_OK
+    #Apago todos los leds antes de empezar por si se ha quedado alguno pillado
+    for led in leds:
+        led.off()
+    zumbador.value = 0
+    
     setText("PSICOTECNICO:\nPRUEBA MEMORIA")
     sleep(3)
     puntuacion = 0
@@ -126,10 +138,14 @@ def test_memoria():
             puntuacion += 2
 
     setText("Superaste todos\nlos niveles!")
-    zumbador.value = 1  
-    sleep(2)  
+    zumbador.value = 1
+    sleep(2)
     zumbador.value = 0
     setText("Fin de la\nprueba")
+    #Apago todos los leds para la siguiente prueba
+    for led in leds:
+        led.off()
+    zumbador.value = 0
     return puntuacion
 
 if __name__ == "__main__":

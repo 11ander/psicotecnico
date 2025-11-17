@@ -3,11 +3,11 @@
 import rospy
 import actionlib
 from audicion_pkg.msg import AudicionAction, AudicionResult
-from prueba_audicion import prueba_audicion
+from audicion_pkg.prueba_audicion import prueba_audicion
 
 class AudicionActionServer:
     def __init__(self):
-        rospy.init_node('audicion_action_server')
+        rospy.init_node('audicion_action_server', anonymous=True)
         self.server = actionlib.SimpleActionServer(
             'audicion_action',
             AudicionAction,
@@ -23,7 +23,6 @@ class AudicionActionServer:
         try:
             # Ejecutar tu función de prueba principal
             rospy.loginfo("Iniciando prueba de audición...")
-            num_beeps, aciertos, fallos = prueba_audicion()
 
             # Construir resultado (4 enteros)
             resultado = AudicionResult()

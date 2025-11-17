@@ -1,0 +1,4 @@
+<launch>
+  <arg name="file" default="$(find mover_pkg)/configs/rviz_configs.rviz"/>
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(arg file)"/>
+</launch>

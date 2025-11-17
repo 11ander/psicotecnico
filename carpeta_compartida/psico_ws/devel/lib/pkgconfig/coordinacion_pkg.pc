@@ -1,1 +1,0 @@
-/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/coordinacion_pkg/lib/pkgconfig/coordinacion_pkg.pc

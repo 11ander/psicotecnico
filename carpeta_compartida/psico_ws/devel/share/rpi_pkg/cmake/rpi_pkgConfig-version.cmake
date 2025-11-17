@@ -1,1 +1,0 @@
-/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/rpi_pkg/share/rpi_pkg/cmake/rpi_pkgConfig-version.cmake

@@ -1,1 +1,0 @@
-/home/robotica_tiago/carpeta_compartida/psico_ws/devel/.private/vision_pkg/lib/pkgconfig/vision_pkg.pc
