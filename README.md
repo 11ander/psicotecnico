@@ -40,6 +40,7 @@
 ## 1. Resumen del problema biomedico
 
 > **Objetivo:** diseñar un sistema robótico con TIAGo que realice de forma automatizada una evaluación psicotécnica de capacidades sensoriales y motrices en un entorno clínico (similar a las pruebas para el carnet de conducir), generando un informe estandarizado a partir de datos objetivos.
+> El sistema está orientado a la evaluación de personas que deben someterse a pruebas psicotécnicas, como aspirantes o renovadores del carnet de conducir, evaluaciones básicas de capacidades sensoriales o revisiones realizadas en centros autorizados.
 
 ### 1.1. Ámbito de evaluación
 - Vista
@@ -75,7 +76,7 @@
 | **Test de Reflejos** | Pulsación de botón iluminado | Secuencias aleatorias, niveles crecientes (menos tiempo de respuesta)|
 | **Test de Memoria (corto plazo)** | Repetición de secuencias de LEDs | Secuencias aleatorias, niveles crecientes (secuencias cada vez mas largas) |
 | **Prueba de Vista** | Estímulos visuales | Presentación en pantalla/tabla; Diagnostico capacidad visual del paciente |
-| **Prueba de Oído** | Estímulos auditivos (beeps) | Variación de frecuencia/volumen, respuesta del usuario |
+| **Prueba de Oído** | Estímulos auditivos (beeps) | Pitidos aleatorios en número y tiempo, respuesta del usuario |
 | **Evaluación psicomotora** | Marcha y postura con cámara de TIAGo | Detección de desviaciones/cambios bruscos |
 | **Interfaz gráfica** | Selección de pruebas y visualización de resultados | Facilita el feedback de ciertas pruebas del psicotecnico |
 
@@ -88,7 +89,7 @@
 - **Raspberry Pi 3B**: panel de **pulsadores + LEDs**, **buzzer**, **Pantalla LCD** y conexión **I2C**/**GPIO** para estímulos y lectura de respuestas.
 
 **Software**
-- **ROS 1** para comunicación y orquestación de nodos (TIAGo ↔ Raspberry Pi).
+- **ROS 1 Noetic** para comunicación y orquestación de nodos (TIAGo ↔ Raspberry Pi).
 - **Python** para lógica de pruebas, manejo de GPIOs...
 - **Visión por computador**: uso de OpenCV para análisis de postura y marcha.
 
@@ -97,12 +98,85 @@
 ### 1.6. Resultado esperado
 - **Sesión guiada de pruebas** totalmente automatizada.
 - **Métricas objetivas** por prueba (precisión, aciertos/fallos, estabilidad postural).
-- **Informe estandarizado** con resultados y observaciones, listo para incorporar a historia clínica.
+- **Informe estandarizado** con resultados y observaciones, listo para incorporar a historia clínica. Además del informe estandarizado, los resultados permiten orientar decisiones clínicas básicas. Más allá del apto / no apto, el sistema puede sugerir recomendaciones como la necesidad de una revisión oftalmológica.
 
 ## 2. Arquitectura del sistema
 
 ### 2.a Diagrama general del sistema y descripción de los principales módulos funcionales
 #### Diagrama general del sistema
+
+
+```mermaid
+---
+config:
+  layout: dagre
+---
+flowchart LR
+ subgraph User["Paciente"]
+    direction TB
+        U1["Interacción con pulsadores y LEDs"]
+        U2["Respuesta a estímulos visuales y auditivos"]
+        U3["Marcha guiada y postura"]
+        U4["Seleccionar prueba"]
+  end
+ subgraph TIAGo["Robot TIAGo"]
+    direction TB
+        T1["Cámara RGB"]
+        T2["Altavoz"]
+        T3["Base Móvil
+                Desplazamiento autónomo"]
+        T4["Brazo Robótico"]
+  end
+ subgraph RPI["Raspberry Pi 3B"]
+    direction TB
+        R1["GPIO + Buzzer
+                LEDs + Pulsadores + Señales acústicas"]
+        R3["Pantalla LCD"]
+        R4["Servidores de Acciones ROS
+                memoria/reflejos"]
+  end
+ subgraph NA["Nodo Audición"]
+    direction TB
+        A1["Prueba Audición"]
+  end
+ subgraph NV["Nodo Visión"]
+    direction TB
+        V1["Prueba Visión"]
+  end
+ subgraph NC["Nodo Coordinación"]
+    direction TB
+        C1["Prueba Coordinación"]
+  end
+ subgraph WS["Web Server"]
+    direction TB
+        W1["Selección de pruebas"]
+        W3["Visualización de resultados"]
+        W4["Nodo de ROS Principal
+                Coordinación y análisis"]
+  end
+    W1 --> U4
+    U4 --> W4
+    W4 -- Enviar goal ejecución --> R4 & A1 & V1 & C1
+    R4 -- Enviar resultados prueba --> W4
+    A1 -- Enviar datos prueba --> W4
+    V1 -- Enviar resultados prueba --> W4
+    C1 -- Enviar resultados prueba --> W4
+    C1 --> U3
+    U3 --> T1
+    T1 --> C1
+    A1 --> T2
+    V1 --> T3 & T4 & U2
+    R1 --> U2 & R4 & R4
+    U2 --> U1
+    U1 --> R1
+    R1 -- Estado de pulsador --> A1
+    U2 -- Caracteres leidos --> V1
+    W4 -- Pruebas finalizadas --> W3
+    W3 -- Resultados parciales --> X["Generacion de PDF"]
+    T5["T5"] -- Informe --> W3
+```
+
+
 #### Descripción de los principales módulos funcionales
 
 ##### Paquete `rpi_pkg`
