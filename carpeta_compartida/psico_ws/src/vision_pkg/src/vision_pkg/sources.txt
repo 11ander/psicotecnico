@@ -1,0 +1,2 @@
+source carpeta_compartida/setup_env.sh 
+source /opt/ros/noetic/setup.bash 
