@@ -282,6 +282,438 @@ Esta prueba evalúa el tiempo de reacción auditivo del usuario cuando se genera
 
 ---
 
+##### Paquete `face_recognition_pkg`
+
+Este paquete implementa el **módulo de reconocimiento facial** del sistema. Su objetivo es identificar al paciente antes o durante la sesión, asociando la evaluación psicotécnica a una persona concreta.
+
+**Función dentro del sistema**
+
+- Permite **enrolar** usuarios (crear su huella facial) y **reconocerlos** en tiempo real usando la cámara RGB de TIAGo.
+- Expone un **Action Server ROS** (`face_recognition_action`) que puede ser llamado desde el `web_server_pkg` u otros nodos para:
+  - Iniciar el reconocimiento.
+  - Esperar a que la identidad sea estable.
+  - Devolver el nombre del paciente reconocido.
+
+**Arquitectura básica**
+
+- Suscripción al topic de cámara:
+  - `RosImageSource` recibe imágenes desde `/xtion/rgb/image_raw/compressed` (`sensor_msgs/CompressedImage`) y mantiene siempre el **último frame en BGR** para procesarlo.
+- Inferencia con DeepFace:
+  - Modelo: `ArcFace`.
+  - Detector: `opencv` (configurable).
+  - A partir de cada frame se calcula un **embedding** normalizado del rostro.
+  - Se compara contra una base de embeddings en disco (`embeddings_db.json`) usando **distancia coseno** y un umbral de similitud.
+- Estabilización:
+  - Se mantiene una **ventana deslizante** con las últimas predicciones.
+  - Solo cuando una misma identidad gana por mayoría durante varios frames, el servidor considera la identidad como **estable** y devuelve el resultado.
+
+**Scripts principales**
+
+- `recognize_action_server.py`  
+  - Nodo ROS que levanta el **Action Server** `face_recognition_action`.
+  - *Goal*: campo `ejecutar` (bool). Si `ejecutar = False`, aborta sin hacer nada.
+  - *Result*:
+    - `nombre`: nombre del usuario reconocido o `"Desconocido"` si no se alcanza un match fiable.
+  - Hilos:
+    - Hilo principal: gestiona la acción ROS, la ventana de estabilización y la interfaz gráfica opcional (ventana OpenCV con el vídeo y la etiqueta del nombre).
+    - Hilo worker: procesa el último frame disponible, calcula el embedding con DeepFace y actualiza la predicción más reciente.
+
+- `enroll_user.py`  
+  - Script **offline** para **registrar nuevos usuarios** en la base de datos de embeddings (`embeddings_db.json`).
+  - Flujo:
+    - Pide por consola el **nombre del usuario**.
+    - Abre la cámara local y guía al usuario por varias **poses simples** (frente, giro ligero, etc.).
+    - Para cada pose:
+      - Captura varios frames.
+      - Selecciona el **más nítido** (métrica de Laplaciano).
+      - Extrae el embedding con DeepFace.
+    - Calcula la **media de todos los embeddings**, la normaliza y:
+      - Si el usuario ya existe, actualiza su plantilla promediando con la anterior.
+      - Si no existe, crea una nueva entrada en el JSON.
+
+**Otros ficheros relevantes**
+
+- `cliente_action_face.py`: cliente de acción ROS para probar el servidor de reconocimiento facial.
+- `recognize.py`, `recognize_ros.py`: scripts auxiliares para pruebas de reconocimiento (modo standalone / ROS).
+- `embeddings_db.json`: base de datos de usuarios y sus vectores de embedding.
+- `requirements*.txt`: dependencias específicas de Python (DeepFace, OpenCV, etc.).
+
+---
+
+##### Paquete `coordinacion_pkg`
+
+Este paquete implementa la **prueba de movilidad y coordinación** del paciente, utilizando la cámara RGB de TIAGo y un modelo de pose (MediaPipe) para analizar la marcha y la postura durante un intervalo de tiempo.
+
+**Función dentro del sistema**
+
+- Evalúa de forma automática:
+  - **Rectitud del tronco** (inclinación lateral y flexión anterior).
+  - **Trayectoria** (zigzag / desviaciones laterales durante la marcha).
+  - **Simetría de la marcha** (posible cojera, diferencias entre ambas piernas).
+- Devuelve una **puntuación global (0–100)** y un **informe textual** con interpretación cualitativa, integrable en el informe final del psicotécnico.
+
+**Arquitectura básica**
+
+- Suscripción al topic de cámara:
+  - `RosImageSource` escucha el topic RGB (`/xtion/rgb/image_raw/compressed`) y mantiene el último frame disponible.
+- Estimación de pose:
+  - Usa **MediaPipe Pose** para obtener landmarks del cuerpo (hombros, caderas, tobillos, etc.).
+  - Filtra por **visibilidad mínima** para evitar mediciones con detecciones poco fiables.
+- Ventanas temporales:
+  - Estructuras `RollingWindow` acumulan valores durante varios segundos para calcular:
+    - Inclinación lateral y pitch del tronco.
+    - Evolución de la posición de la cadera (zigzag).
+    - Altura de los tobillos para detectar el ciclo de marcha y asimetrías.
+- Métricas y scoring:
+  - Cada métrica (tronco, zigzag, cojera) se transforma en un **score parcial (0–1)** con rangos “normal / máximo aceptable”.
+  - La nota final es una combinación ponderada de esos scores, escalada a 0–100.
+  - Se generan textos cualitativos (por ejemplo: “zigzag acusado; posible alteración del equilibrio”).
+
+**Scripts principales**
+
+- `mobility_exam_action_server.py`  
+  - Nodo principal del paquete: levanta el **Action Server** `mobility_exam_action`.
+  - **Parámetros ROS** (ejemplos):
+    - `~topic`: topic de cámara a usar.
+    - `~compressed`: indica si se usan `CompressedImage` o `Image`.
+    - `~complexity`: complejidad del modelo de MediaPipe.
+    - `~out_dir`: carpeta donde guardar métricas e informe.
+    - `~enable_ui`: activar/desactivar ventana gráfica.
+  - **Goal de la acción**:
+    - Campo `ejecutar` (bool). Si `ejecutar = False`, aborta la acción.
+  - **Result**:
+    - `score`: nota global de movilidad (0–100).
+    - `informe`: lista de líneas de texto con la interpretación del resultado.
+    - `report_path`: ruta del informe de texto generado (`.txt`).
+    - `csv_path`: ruta del fichero CSV con métricas por segundo.
+  - Comportamiento:
+    - Mientras la persona está correctamente encuadrada (ni demasiado cerca ni demasiado lejos), el tiempo se cuenta como **“válido”**.
+    - La prueba termina al alcanzar un tiempo válido objetivo (p.ej. 30 s).
+    - Durante la ejecución:
+      - Publica feedback (`estado`, `valid_elapsed`) para monitorizar el estado desde el webserver o consola.
+      - En modo UI, muestra una ventana con la pose dibujada, texto de estado y tiempo acumulado.
+
+- `cliente_action_mobility.py`  
+  - Cliente de acción para probar `mobility_exam_action`.
+  - Permite lanzar la prueba de movilidad desde consola, ver feedback y el resultado final sin pasar por el webserver.
+
+- `speak_api.py`  
+  - Módulo auxiliar para hacer hablar a TIAGo a través del action `/tts` (`pal_interaction_msgs/TtsAction`).
+  - Clase `TiagoSpeaker`:
+    - Crea un `SimpleActionClient` a `/tts`.
+    - Métodos principales:
+      - `speak(text, lang_id="es_ES")`: bloqueante; espera a que termine la locución.
+      - `speak_async(text, lang_id="es_ES")`: envía el texto sin bloquear.
+  - Uso previsto: integrar mensajes de voz de TIAGo (instrucciones y feedback) durante la prueba de movilidad o en el flujo general del psicotécnico.
+
+**Otros ficheros relevantes**
+
+- `mobility_exam.py`, `mobility_exam_30s.py`: pruebas de la lógica de movilidad sin acción ROS.
+- `holistic_cam.py`, `holistic_ros_cam.py`: pruebas con la cámara y MediaPipe (captura local / ROS).
+- Ficheros `mobility_metrics_*.csv` y `mobility_report_*.txt`: ejemplos de resultados generados por el servidor en ejecuciones anteriores.
+
+---
+
+#### Unidad de interfaz web (web_server_pkg)
+
+Aunque el `web_server_pkg` es principalmente software, su despliegue se apoya en una pequeña infraestructura hardware que permite que la interfaz gráfica sea accesible desde la red del laboratorio.
+
+**Servidor web**
+
+El servidor que ejecuta el `web_server_pkg` puede ser:
+
+- Un **PC del laboratorio** conectado a la misma red que TIAGo.
+- O bien el propio **PC interno de TIAGo**, ejecutando el workspace de ROS 1 y el servidor Flask.
+
+Requisitos aproximados:
+
+- CPU: 4 núcleos (Intel i5/i7 equivalente).
+- RAM: ≥ 8 GB.
+- Almacenamiento: ≥ 50 GB (para logs, históricos y dependencias).
+- Conectividad: Ethernet recomendada para baja latencia con el resto de nodos ROS.
+
+En este equipo se ejecutan:
+
+- ROS 1 (Noetic) con el workspace `psico_ws`.
+- El nodo Flask de `web_server_pkg` (servidor HTTP).
+- `rosbridge_server` (puente WebSocket ↔ ROS) para la parte de mapa y visualización.
+- `web_video_server` para publicar el stream de la cámara de TIAGo a través de HTTP.
+
+**Dispositivos cliente**
+
+El acceso a la interfaz gráfica se realiza desde dispositivos estándar con navegador web:
+
+| Dispositivo       | Uso principal                                      | Requisitos mínimos                            |
+|-------------------|----------------------------------------------------|-----------------------------------------------|
+| Tablet / iPad     | Panel de control en la sala de pruebas             | Pantalla ≥ 10", navegador moderno (Chrome/FF) |
+| Portátil del técnico | Supervisión avanzada (panel admin + mapa 2D)  | Conectividad WiFi/Ethernet al servidor web    |
+| PC de consulta    | Revisar informes PDF e histórico de sesiones       | Cualquier PC con navegador actual             |
+
+Los clientes sólo necesitan:
+
+- Estar en la misma **LAN** que el servidor web.
+- Acceder a la URL del servidor (ej. `http://<servidor>:5000/`).
+
+**Red y comunicación**
+
+La unidad de interfaz web se integra en la red del laboratorio junto con TIAGo y la Raspberry Pi:
+
+- **LAN cableada**:
+  - Conexión entre TIAGo y el servidor web para los topics y actions de ROS 1.
+- **WiFi**:
+  - Acceso de tablets y portátiles al servidor web.
+- El servidor web actúa como **punto central**:
+  - Desde el navegador se hacen peticiones HTTP → `web_server_pkg`.
+  - `web_server_pkg` se comunica con:
+    - Los action servers de las pruebas (en TIAGo y en la Raspberry).
+    - El TTS de TIAGo (`/tts`) para locuciones.
+    - `move_base` y `/robot_pose` para el control de posición desde el panel de administración.
+
+Esta configuración permite que cualquier profesional, con un dispositivo con navegador, pueda lanzar pruebas, monitorizar al robot y descargar informes sin necesitar acceso directo a ROS o a la Raspberry Pi.
+
+
+### 2.c) Esquema preliminar de interfaz de usuario (UI/UX) y flujo de interacción con el sistema
+
+En esta sección se describe **cómo interactúan** los usuarios con el sistema a través del navegador web, diferenciando entre el flujo de trabajo del **paciente/profesional en sala** y el del **administrador/técnico**.
+
+---
+
+#### 2.c.1. Roles y vistas principales
+
+- **Modo paciente / profesional en sala**
+  - Acceso al **login** por reconocimiento facial.
+  - Acceso al **panel principal de pruebas**:
+    - Configurar el orden de las pruebas.
+    - Lanzar la batería.
+    - Ver resultados.
+    - Descargar informe PDF.
+
+- **Modo administrador / técnico**
+  - Acceso al **panel de administración**:
+    - Consultar histórico de sesiones.
+    - Borrar histórico.
+    - Supervisar mapa 2D y cámara del TIAGo.
+    - Enviar al robot a posiciones clave de la sala.
+
+---
+
+#### 2.c.2. Flujo de uso en modo paciente
+
+##### a) Login por reconocimiento facial
+
+1. El usuario accede a la URL del sistema y se muestra la página de **login**.
+2. La interfaz presenta:
+   - Mensaje explicando que debe colocarse frente a la cámara del TIAGo.
+   - Botón **“Login”**.
+3. Al pulsar “Login”:
+   - El navegador envía una petición al backend de login.
+   - El servidor lanza la acción de reconocimiento facial.
+   - Mientras tanto, la UI muestra mensajes del tipo *“Intentando reconocer al paciente…”*.
+4. Resultado:
+   - Si el reconocimiento tiene éxito:
+     - Se muestra un mensaje de bienvenida con el nombre del paciente.
+     - Se redirige automáticamente al **panel principal**.
+   - Si no se reconoce a nadie:
+     - Se muestra un mensaje de error y se permanece en la pantalla de login.
+
+---
+
+##### b) Configuración de la batería de pruebas
+
+En el **panel principal de pruebas** el diseño se organiza en dos columnas:
+
+- **Barra superior (navbar)**:
+  - Título del sistema.
+  - Nombre del paciente autenticado.
+  - Acceso al **panel de administración** y botón de logout (si se usa).
+
+- **Columna izquierda – Configuración de pruebas**:
+  - Bloque “Selecciona el orden de las pruebas”.
+  - Botones para añadir pruebas a la cola:
+    - `➕ Reflejos`
+    - `➕ Memoria`
+    - `➕ Audición`
+  - Lista ordenada con la **cola de pruebas**:
+    - Cada ítem muestra:
+      - Nombre de la prueba.
+      - Posición (`#1`, `#2`, …).
+      - Controles para reordenar (↑ / ↓) y eliminar (✕).
+  - Botones de control:
+    - **“Empezar”**: inicia la batería (solo se habilita si hay pruebas en la cola).
+    - **“Vaciar”**: limpia la cola.
+
+El objetivo es que el profesional pueda **personalizar el orden** de la batería psicotécnica de forma sencilla.
+
+---
+
+##### c) Ejecución de pruebas y feedback en tiempo real
+
+Al pulsar **“Empezar”**:
+
+1. El navegador envía la lista ordenada de pruebas al servidor.
+2. El servidor:
+   - Resetea el estado interno de la sesión.
+   - Lanza en segundo plano la ejecución de cada prueba (Memoria, Reflejos, Audición).
+   - Hace que TIAGo **anuncie por voz** el inicio de cada prueba (si el TTS está activado).
+
+En la interfaz se muestra:
+
+- Un **bloque de estado**:
+  - Texto de estado general: “Ejecutando batería de pruebas…” o “Prueba actual: Memoria”.
+  - **Barra de progreso** basada en el número de pruebas completadas.
+  - **Registro de eventos** (log) con mensajes de inicio/fin de cada prueba y posibles avisos.
+
+El frontend consulta periódicamente el estado al backend (polling) para actualizar el panel **sin recargar la página**.
+
+---
+
+##### d) Resultados y entrada manual para Audición P2
+
+En la **columna derecha** del panel principal:
+
+- Tarjeta “Resultados de la sesión”:
+  - Para cada prueba:
+    - Nombre.
+    - Hora de ejecución.
+    - Nota numérica (0–10).
+  - Para **Audición**:
+    - Desglose en:
+      - Nota P1 (parte con pulsador).
+      - Nota P2 (parte de conteo).
+      - Nota final (media).
+    - En caso de requerir entrada manual de P2:
+      - Pequeño formulario embebido:
+        - Texto explicativo del tipo: “Introduce el número de pitidos escuchados en la PRUEBA 2”.
+        - Campo numérico.
+        - Botón “Guardar”.
+
+Al pulsar “Guardar”:
+
+- Se envía la respuesta al servidor.
+- Se recalculan la nota de Audición P2 y la nota final de Audición.
+- La tarjeta de resultados se refresca y marca que la respuesta ha sido registrada.
+
+Cuando la batería completa termina:
+
+- El estado cambia a **“Pruebas completadas”**.
+- La barra de progreso llega al 100%.
+- Se activa el botón **“Descargar informe PDF”**.
+
+---
+
+##### e) Generación y descarga del informe PDF
+
+- El usuario pulsa **“Descargar informe PDF”**.
+- El servidor genera un PDF con:
+  - Encabezado con logo.
+  - Fecha y hora de la sesión.
+  - Nombre del paciente.
+  - Tabla con:
+    - Nota de Memoria.
+    - Nota de Reflejos.
+    - Nota de Audición (P1, P2 y nota final).
+  - Nota legal final (uso orientativo, no diagnóstico médico).
+
+El PDF se abre o descarga en el navegador, quedando listo para **guardar o imprimir**.
+
+---
+
+#### 2.c.3. Panel de administración (modo profesional/técnico)
+
+El panel de administración ofrece herramientas adicionales para el personal técnico y para la supervisión del sistema.
+
+##### a) Histórico de sesiones
+
+- Tarjeta “Histórico de sesiones”:
+  - Tabla con:
+    - Fecha.
+    - Hora.
+    - Paciente.
+    - Resumen de notas de las pruebas.
+  - Controles:
+    - Botón **“Actualizar”**: recarga los datos del histórico.
+    - Botón **“Limpiar”**: elimina el histórico almacenado en disco (por ejemplo, al cambiar de día o durante pruebas).
+
+Este histórico está pensado como **vista rápida** de las últimas sesiones y sus resultados.
+
+---
+
+##### b) Supervisión de robot y entorno
+
+En el mismo panel de administración se incluyen:
+
+1. **Streaming de la cámara frontal**:
+   - Recuadro de vídeo en vivo (webcam del TIAGo) para supervisar la sala y al paciente durante las pruebas.
+
+2. **Mapa 2D y posición del robot**:
+   - Visor 2D integrado (similar a un mini-RViz en navegador) que muestra:
+     - Mapa de ocupación.
+     - Pose actual del TIAGo.
+
+3. **Controles de movimiento**:
+   - Selector con dos modos:
+     - **Posiciones preprogramadas**: lista de destinos típicos (p. ej. “Puerta”, “Mitad de la sala”, “Fondo”).
+     - **Coordenadas manuales**: campos para introducir `[x, y, oz, ow]` en el frame `map`.
+   - Botón **“Enviar movimiento”**:
+     - En modo preprogramado, envía una orden al servidor para desplazarse a uno de los puntos guardados.
+     - En modo manual, envía un objetivo con la pose indicada.
+   - Mensajes de estado informan al usuario de si el comando se ha enviado correctamente.
+
+Este panel permite al técnico **reubicar rápidamente** al robot y supervisar su posición sin necesidad de abrir herramientas de escritorio como RViz.
+
+---
+
+#### 2.c.4. Diagrama de flujo de interacción
+
+```mermaid
+flowchart LR
+  subgraph Usuario["Usuario (navegador web)"]
+    U1[Login facial]
+    U2[Panel de pruebas]
+    U3[Panel administración]
+  end
+
+  subgraph Web["web_server_pkg (servidor web)"]
+    L[Vista /login]
+    API_LOGIN[/Endpoint login/]
+    IDX[Vista principal /]
+    START[/Endpoint start/]
+    STATUS[/Endpoint status/]
+    ANSWER[/Endpoint answer/]
+    PDF[/Endpoint PDF/]
+    ADM[Vista /admin]
+    MOVE[/Endpoint admin/move/]
+    HIST[/Endpoint admin/history/]
+  end
+
+  subgraph ROS["ROS 1 (TIAGo + Raspberry)"]
+    FACE[Acción reconocimiento facial]
+    MEM[Acción memoria]
+    REF[Acción reflejos]
+    AUD[Acción audición]
+    TTS[TTS /tts]
+    MOVE_BASE[/move_base/]
+  end
+
+  U1 --> L --> API_LOGIN --> FACE
+  FACE --> API_LOGIN --> IDX --> U2
+
+  U2 --> START --> MEM & REF & AUD
+  MEM & REF & AUD --> STATUS --> U2
+  U2 --> ANSWER --> AUD
+  U2 --> PDF
+
+  U3 --> ADM
+  ADM --> HIST --> U3
+  ADM --> MOVE --> MOVE_BASE
+
+  START --> TTS
+```
+
+---
+
+
+
 ##### 3. Detalles adicionales sobre el *action server* y `speaker.py`
 
 ###### 3.1. Action server de ROS 1 (`audicion_action.py`)
@@ -780,6 +1212,9 @@ Estos factores pueden introducir pequeñas desviaciones en el tiempo de reacció
 - Dependencia del web server para el resultado final.
 El action server solo devuelve datos objetivos. La evaluación final requiere esperar a que el usuario introduzca el número de pitidos escuchados. Un fallo en esa interacción puede retrasar o impedir la generación del resultado final.
 
+
+
+
 ---
 
 ### 4.b) Estrategia de mitigación y pruebas iniciales.
@@ -839,10 +1274,248 @@ Para mitigar las limitaciones de sincronización y estabilidad detectadas, se ha
   - La subprueba de conteo de pitidos funciona sin necesidad de sincronización estricta
   - La subprueba de reacción presenta tiempos coherentes y sin retardos perceptibles
   - El sistema es suficientemente estable y preciso para el propósito del psicotécnico
+ 
+#### En cuanto al paquete (`web_server_pkg`)
+
+- **Separación clara entre lógica web y lógica ROS**  
+  - El servidor Flask:
+    - Solo lanza hilos ligeros para gestionar la ejecución de pruebas.
+    - Delega en clientes de acciones ROS (`pruebas_client.py`) toda la lógica de comunicación.
+  - Esto facilita:
+    - Manejo de errores centralizado (try/except alrededor de cada acción).
+    - Degradación controlada: si una prueba falla, se marca con nota `-1` y se continúa con el resto.
+
+- **Control de latencia y bloqueo**  
+  - Los llamados a acciones ROS se hacen con **tiempos de espera razonables**:
+    - Si un servidor no responde en X segundos, se aborta el goal y se registra el error.
+  - El polling de estado desde el navegador (`/status`) se limita a un intervalo fijo para no saturar el servidor.
+
+- **Gestión de errores visible para el usuario**  
+  - En la UI:
+    - Mensajes claros cuando una prueba no puede completarse (p. ej., “Raspberry desconectada”).
+    - Posibilidad de volver a lanzar la batería tras solventar el problema.
+  - En el backend:
+    - Registro de errores en un log de servidor para depuración.
+
+- **Pruebas iniciales**  
+  - Simulación de fallos:
+    - Desconectar temporalmente la Raspberry.
+    - Parar el servidor de audición.
+  - Observación:
+    - El sistema sigue funcionando para el resto de pruebas.
+    - El informe PDF refleja correctamente qué pruebas han sido válidas y cuáles no.
+
+---
+
+#### En cuanto al paquete (`face_recognition_pkg`)
+
+- **Protocolo de enrolamiento robusto**  
+  - En `enroll_user.py`:
+    - Captura de varias poses (frente y ligeras rotaciones).
+    - Selección automática del frame más nítido por Laplaciano.
+    - Media de embeddings y normalización.
+  - Recomendación operativa: enrolar al paciente con buena iluminación, sin mascarilla y con gafas habituales.
+
+- **Estabilización por mayoría y umbral conservador**  
+  - El servidor de acción:
+    - No decide con un único frame, sino con una **ventana deslizante de predicciones**.
+    - Requiere mayoría consistente para aceptar un nombre.
+  - El umbral de distancia coseno se fija de forma conservadora para reducir falsos positivos (mejor “Desconocido” que confusión entre personas).
+
+- **Fallback a login manual**  
+  - Si el reconocimiento falla o las condiciones de luz no son adecuadas:
+    - El sistema puede utilizar el modo `--no-login` (usuario de prueba).
+    - A futuro, se puede añadir un login manual por teclado (nombre / ID).
+
+- **Pruebas iniciales**  
+  - Ensayos con varios usuarios:
+    - Distintas distancias.
+    - Cambios de iluminación moderados.
+  - Observación:
+    - El sistema reconoce correctamente cuando se respetan las condiciones básicas (cara centrada, sin oclusiones).
+    - Aparecen “Desconocido” en condiciones adversas, lo cual es aceptable y preferible a errores de identidad.
+
+---
+
+#### En cuanto al paquete (`coordinacion_pkg`)
+
+- **Heurísticas ajustables y normalización de métricas**  
+  - Los rangos “correcto / máximo aceptable” (tronco, zigzag, cojera) se definen de forma explícita y pueden ajustarse:
+    - A partir de pruebas con voluntarios sanos.
+    - Ajustando pesos de cada componente en la nota final.
+  - Se normalizan las señales (por ejemplo, posición de cadera en [0,1]) para reducir la dependencia de resolución y encuadre exacto.
+
+- **Gestión de calidad de tracking**  
+  - El nodo:
+    - Solo acumula tiempo y métricas cuando la persona está bien encuadrada y los landmarks tienen visibilidad suficiente.
+    - Muestra mensajes claros cuando la persona está demasiado cerca/lejos o parcialmente fuera de campo.
+  - Si no se alcanza un tiempo válido mínimo, la nota final debe interpretarse con cautela (puede considerarse “prueba no válida”).
+
+- **Registro de métricas y generación de informes**  
+  - En cada segundo de tiempo válido se guarda:
+    - `score_total`, ángulos del tronco, zigzag, asimetrías, etc. en un CSV.
+  - Al terminar:
+    - Se genera un informe TXT con una interpretación cualitativa.
+  - Esto permite:
+    - Analizar los datos a posteriori.
+    - Ajustar umbrales y pesos en función de la experiencia clínica.
+
+- **Pruebas iniciales**  
+  - Ensayos de marcha con distintos patrones:
+    - Caminata recta normal.
+    - Caminata exagerando zigzag.
+    - Simulación de cojera (apoyando menos una pierna).
+  - Observación:
+    - La nota global varía de forma coherente con la calidad de la marcha.
+    - Las descripciones cualitativas ayudan a entender qué componente está penalizando más (tronco, trayectoria o asimetría).
+
+---
+
+En conjunto, estas estrategias de mitigación permiten que el sistema sea **utilizable y extensible** en un entorno de laboratorio, con un comportamiento suficientemente estable y transparente para el profesional, a pesar de las limitaciones inherentes al hardware y a los modelos utilizados.
+
 
 ---
 
 ## 5. Cronograma de desarrollo
 ### 5.a) Plan temporal desde el Hito 3 hasta la entrega final
+
+El proyecto comenzó en **septiembre de 2025** y la entrega final está prevista para el **12 de enero de 2026**.  
+En este apartado nos centramos en la fase desde el **Hito 3** (finales de noviembre) hasta la entrega, donde el objetivo es pasar de tener todos los módulos implementados a un sistema:
+
+- **Integrado** (ROS + Raspberry + webserver + TIAGo).
+- **Estable** (sin cuelgues durante la demo).
+- **Demostrable** (flujo completo: login → batería de pruebas → informe PDF).
+
+#### 5.a.1. Fases previstas
+
+1. **Post–Hito 3: revisión y cierre de arquitectura (semana 1)**  
+   - Ajustar lo pedido por el profesor en el Hito 3.  
+   - Congelar la arquitectura de nodos: nombres de actions, topics, estructura del `web_server_pkg`.  
+   - Dejar claro qué pruebas se lanzan sí o sí desde la interfaz web en el Hito final.
+
+2. **Integración fuerte ROS + webserver + Raspberry (semanas 1–3)**  
+   - Conectar de forma robusta `web_server_pkg` con:
+     - `rpi_pkg` (Memoria/Reflejos).  
+     - `audicion_pkg`.  
+     - `coordinacion_pkg`.  
+     - `face_recognition_pkg`.  
+   - Pruebas de extremo a extremo: desde el navegador hasta el hardware real (TIAGo + Raspberry).
+
+3. **Pulido de pruebas individuales y calibración (semanas 2–4)**  
+   - Ajustar parámetros, tiempos, niveles de dificultad y notas:
+     - Reflejos / Memoria (Raspberry + `rpi_pkg`).  
+     - Audición (`audicion_pkg`).  
+     - Visión (`vision_pkg`).  
+     - Movilidad / marcha (`coordinacion_pkg`).  
+     - Reconocimiento facial (`face_recognition_pkg`).  
+   - Asegurarse de que todas las pruebas devuelven métricas y notas coherentes (0–10 o 0–100 según el caso).
+
+4. **Interfaz de usuario, informes y modo administrador (semanas 3–5)**  
+   - Terminar la UI del webserver:
+     - Flujo paciente: login → selección de pruebas → ejecución → resultados.  
+     - Panel admin: histórico de sesiones, mapa 2D de TIAGo, comandos de movimiento.  
+   - Pulir la generación de PDF (informe estandarizado) y la persistencia del histórico.
+
+5. **Validación global y “demo ready” (finales de diciembre)**  
+   - Hacer sesiones completas de prueba en el laboratorio con varios “usuarios internos”.  
+   - Verificar:
+     - Tiempos de respuesta aceptables.  
+     - Ausencia de cuelgues en navegación, acciones o webserver.  
+     - Que el informe final refleja correctamente los resultados de las pruebas.
+
+6. **Buffer de seguridad y preparación de entrega (enero 2026)**  
+   - Corregir bugs detectados en la validación.  
+   - Congelar el código de cara a la demo.  
+   - Revisar documentación (README, hitos, guía de uso) y preparar la presentación para el **12/01/2026**.
+
+#### 5.a.2. Diagrama Gantt (Hito 3 → entrega)
+
+> Fechas aproximadas; sirven para visualizar el plan global.
+
+```mermaid
+gantt
+    dateFormat  YYYY-MM-DD
+    title Plan desde Hito 3 hasta entrega final
+    axisFormat %d/%m
+
+    section Arquitectura e integración
+    Revisión Hito 3 y cierre de arquitectura   :a1, 2025-11-25, 5d
+    Integración ROS + webserver + RPi          :a2, 2025-11-28, 2025-12-18
+
+    section Pulido de pruebas
+    Afinar Memoria/Reflejos (rpi_pkg)          :b1, 2025-12-02, 2025-12-16
+    Pulido Audición + mover_pkg                :b2, 2025-12-02, 2025-12-20
+    Pulido Visión (vision_pkg)                 :b3, 2025-12-05, 2025-12-22
+    Pulido Movilidad (coordinacion_pkg)        :b4, 2025-12-05, 2025-12-22
+    Ajuste Reconocimiento facial               :b5, 2025-12-05, 2025-12-22
+
+    section UI, informes y admin
+    Webserver (UI paciente + orquestación)     :c1, 2025-12-09, 2025-12-29
+    Panel admin + histórico + movimiento       :c2, 2025-12-12, 2026-01-05
+    PDF e informe final                        :c3, 2025-12-15, 2025-12-29
+
+    section Validación y entrega
+    Validación global en laboratorio           :d1, 2025-12-20, 2026-01-05
+    Correcciones finales y freeze de código    :d2, 2026-01-03, 2026-01-10
+    Preparación demo y entrega                 :milestone, d3, 2026-01-12, 1d
+
+
+graph TD
+    J[Jon<br/>Raspberry + Web]
+    A[Ander<br/>Audición + Mover]
+    D[Daniel<br/>Visión]
+    S[Asier<br/>Movilidad + Face + Web]
+
+    RPI[rpi_pkg<br/>Memoria/Reflejos]
+    AUD[audicion_pkg]
+    MOV[mover_pkg]
+    VIS[vision_pkg]
+    COORD[coordinacion_pkg]
+    FACE[face_recognition_pkg]
+    WEB[web_server_pkg]
+
+    J --> RPI
+    J --> WEB
+    A --> AUD
+    A --> MOV
+    D --> VIS
+    S --> COORD
+    S --> FACE
+    S --> WEB
+
 ### 5.b) Reparto de responsabilidades actualizado, con enfoque colaborativo.
+### 5.b) Reparto de responsabilidades actualizado, con enfoque colaborativo
+
+Aunque el grupo comenzó a trabajar desde **septiembre**, el reparto de tareas se ha ido especializando por módulos. Cada persona tiene “paquetes estrella” de los que es responsable, pero la **integración** y las **pruebas finales** se abordan de forma conjunta.
+
+---
+
+#### 5.b.1. Mapa de responsabilidades por paquete
+
+```mermaid
+graph TD
+    J[Jon\nRaspberry + Web]
+    A[Ander\nAudición + Mover]
+    D[Daniel\nVisión]
+    S[Asier\nMovilidad + Face + Web]
+
+    RPI[rpi_pkg\nMemoria/Reflejos]
+    AUD[audicion_pkg]
+    MOV[mover_pkg]
+    VIS[vision_pkg]
+    COORD[coordinacion_pkg]
+    FACE[face_recognition_pkg]
+    WEB[web_server_pkg]
+
+    J --> RPI
+    J --> WEB
+    A --> AUD
+    A --> MOV
+    D --> VIS
+    S --> COORD
+    S --> FACE
+    S --> WEB
+```
+
+
 
