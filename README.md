@@ -755,7 +755,32 @@ Esto introducía una limitación de compatibilidad que aumentaba el riesgo de er
 En conjunto, estas limitaciones hacían que la solución basada en Docker sobre Raspberry Pi 3B no fuera suficientemente robusta ni determinista para un sistema psicotécnico que debe medir tiempos de reacción con cierta precisión y ofrecer un comportamiento estable durante las pruebas.
 
 ### En cuanto al paquete `mover_pkg` (navegación del TIAGo):
+- Dependencia del stack de navegación de TIAGo (`/move_base`).
+El paquete no realiza navegación autónoma, sino que depende completamente del action server de navegación.
+Esto implica que cualquier fallo en la carga del mapa o la localización del robot por ejemplo, afectaría directamente al correcto funcionamiento del módulo.
 
+- Precisión limitada en la detección de movimiento/parada.
+La clase `Follower` determina si TIAGo se mueve comparando poses consecutivas publicadas en `/robot_pose`.
+Esto introduce ciertas limitaciones como ruido en la estimación de pose o retrasos variables ante no llegar a la pose al 100%. Estos factores pueden provocar que el sistema detecte movimiento o parada de forma tardía o imprecisa
+
+- Robustez limitada del seguimiento de checkpoints.
+El sistema actual no implementa replanificación si el robot no alcanza un punto.
+Es funcional para un entorno controlado, pero quizas algo limitado a nivel industrial o clínico.
+
+- Dependencia estricta del frame 'map'.
+Todos los checkpoints se envían en referencia a 'map'.
+Si el sistema de TF tarda en establecerse, o el mapa no está cargado a tiempo, los objetivos podrían fallar o ejecutarse de mala manera.
+
+#### En cuanto al paquete `audicion_pkg`:
+- Limitaciones en la sincronización entre pitido y pulsación.
+  En la subprueba de tiempo de reacción, la precisión depende de:
+  - la latencia del altavoz del robot
+  - el tiempo de lectura del nodo `estado_pulsador.py`
+  - la carga del sistema sobre el action server
+Estos factores pueden introducir pequeñas desviaciones en el tiempo de reacción medido, y por ende dar resultados erroneos.
+
+- Dependencia del web server para el resultado final.
+El action server solo devuelve datos objetivos. La evaluación final requiere esperar a que el usuario introduzca el número de pitidos escuchados. Un fallo en esa interacción puede retrasar o impedir la generación del resultado final.
 
 ---
 
@@ -782,6 +807,43 @@ Sin embargo, para el alcance actual del proyecto, priorizar:
   - La fiabilidad en tiempo real
   - La precisión de las medidas de reacción
   - La simplicidad de mantenimiento: resulta más crítico que disponer de un entorno completamente contenedorizado.
+
+ #### En cuanto al paquete `mover_pkg`:
+Para mitigar los problemas detectados y asegurar la viabilidad técnica del sistema, se han aplicado las siguientes medidas:
+- Simplificación del cliente de navegación.
+  Se ha optado por un enfoque minimalista, publicando directamente en `/move_base/goal` en lugar de utilizar un cliente de acciones completo.
+  Esto reduce la complejidad del sistema y elimina posibles inconsistencias del protocolo de acciones.
+
+- Detección de movimiento/parada mediante umbrales configurables.
+  La clase `Follower` utiliza funciones propias para detectar movimiento real comparando poses con un retardo configurable, mitigando el ruido y la variabilidad de `/robot_pose`.
+
+- Validación mediante un script `.sh` interno. Este script lanza RViz, carga el mapa del laboratorio y envía al robot a cuatro checkpoints reales. Estas pruebas permiten verificar la estabilidad del módulo antes de integrarlo con el nodo central.
+
+- Resultados de las pruebas iniciales:
+  - El robot inicia y detiene (quizas esta parte le cuesta más, pero si se configuran correctamente los parámetros, debería mejorar) su movimiento dentro de los tiempos esperados.
+  - La secuencia completa de checkpoints se recorre sin errores.
+  - El módulo es adecuado para un entorno controlado como un laboratorio.
+
+#### En cuanto al paquete `audicion_pkg`:
+Para mitigar las limitaciones de sincronización y estabilidad detectadas, se han adoptado las siguientes estrategias:
+- Separación clara entre captura de datos y evaluación final. El action server genera pitidos, registra aciertos y fallos, y devuelve datos crudos. La valoración final se deja al `web_server_pkg`, evitando combinar lógica técnica con interacción humana.
+
+- Uso de una clase unificada de audio (`speaker.py`). La misma clase gestiona:
+  - el pitido utilizado en ambas subpruebas
+  - posibles mensajes de voz del robot
+  Esto asegura consistencia en la generación de estímulos auditivos.
+
+- Pruebas iniciales de validación. Se ha comprobado que:
+  - El TIAGo genera pitidos de manera consistente
+  - La Raspberry Pi detecta el pulsador sin retardos relevantes
+  - El action server completa ambas subpruebas sin incidencias
+  - La comunicación entre TIAGo y la Raspberry Pi es estable en ROS 1
+  - La subprueba de conteo de pitidos funciona sin necesidad de sincronización estricta
+  - La subprueba de reacción presenta tiempos coherentes y sin retardos perceptibles
+  - El sistema es suficientemente estable y preciso para el propósito del psicotécnico
+
+---
+
 ## 5. Cronograma de desarrollo
 ### 5.a) Plan temporal desde el Hito 3 hasta la entrega final
 ### 5.b) Reparto de responsabilidades actualizado, con enfoque colaborativo.
