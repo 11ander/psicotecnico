@@ -471,6 +471,157 @@ La unidad de interfaz web se integra en la red del laboratorio junto con TIAGo y
 
 Esta configuración permite que cualquier profesional, con un dispositivo con navegador, pueda lanzar pruebas, monitorizar al robot y descargar informes sin necesitar acceso directo a ROS o a la Raspberry Pi.
 
+---
+
+### Paquete 'mover_pkg'
+
+Este paquete agrupa las funcionalidades relacionadas con el **movimiento de la base del robot TIAGo** dentro del entorno de evaluación psicotécnica.
+Su objetivo principal es situar al robot en las posiciones adecuadas para cada prueba (vista, marcha/postura, audición, etc.) y garantizar que la interacción con el paciente se realiza desde una distancia y orientación seguras y cómodas. Proporciona una capa de abstracción sencilla para:
+* Recibir una lista de checkpoints.
+* Enviar los objetivos de navegación correspondientes al stack de movimiento de TIAGo.
+* Confirmar si el robot ha ido alcanzando cada punto de la ruta.
+
+**Arquitectura de Control:**
+> El paquete `mover_pkg` implementa una **clase seguidora de checkpoints** (Follower) que recibe una lista de posiciones del mapa (waypoints)(solo posiciones x e y, y quaternios qz y qw) y las recorre en orden.
+> La lógica de cuándo y a qué puntos debe ir TIAGo **no está dentro de `mover_pkg`**, sino en nodos externos (como el nodo central), que son quienes prepararan la lista de checkpoints y se la pasaran a esta clase cuando sea necesario.
+
+---
+
+**Funcionalidades del paquete**
+
+Internamente, la clase se comunica con el sistema de navegación de TIAGo para enviar cada checkpoint como objetivo de navegación y esperar a que se alcance antes de pasar al siguiente. Además, el paquete incluye:
+* Un **launch de RViz**, para visualizar el robot, el mapa y los objetivos de navegación en pruebas de validacion.
+* Un **launch del mapa del laboratorio**, para cargar el entorno donde se moverá TIAGo.
+ 
+Como herramienta de validación, `mover_pkg` incorpora también un script `.sh` que:
+1. Lanza RViz.
+2. Tras unos segundos, lanza el nodo del mapa.
+3. Pasado un tiempo adicional, ordena al checkpoint follower que recorra una lista fija de 4 puntos del mapa del laboratorio.
+
+Este script se utiliza solo para **pruebas internas**, con el objetivo de verificar que:
+* El mapa se carga correctamente.
+* La navegación hasta los checkpoints funciona como se espera.
+* La clase de seguimiento de checkpoints se comporta de forma estable antes de integrarla con el nodo central.
+
+---
+
+**Script `checkpoint_follower.py`**
+
+Este script implementa la clase 'Follower', responsable de enviar objetivos de navegación al nodo '/move_base' del robot TIAGo y comprobar que el robot comienza a desplazarse, y  se detiene correctamente en cada checkpoint.
+
+La clase actúa como un **cliente ligero de navegación**, encapsulando toda la lógica necesaria para recorrer una lista de poses dentro del mapa. La clase se inicializa creando:
+* un **publicador** a `/move_base/goal` para enviar objetivos de navegación
+* un **suscriptor** a `/robot_pose` para recibir la pose actual del robot
+* un mecanismo que **detecta inicio y fin de movimiento** para ver cuando termina de moverse la base
+
+Una vez inicializado, la clase permite enviar una lista de puntos mediante la funcion 'enviar_puntos()', que recibe una lista de posiciones `[x, y, qz, qw]`, crea un `PoseStamped` para cada una y las envía secuencialmente. Este método permite que nodos externos indiquen una **ruta completa** sin preocuparse por la lógica interna de navegación.
+
+---
+
+### 2.b) Especificación de componentes de hardware
+
+En este apartado se detallan los componentes físicos que formarán el sistema robótico de evaluación psicotécnica, distinguiendo entre el robot base TIAGo, la unidad auxiliar basada en Raspberry Pi y el resto de periféricos y sistemas de comunicación. Toda la arquitectura está pensada para poder desplegarse en un entorno clínico controlado.
+
+#### Robot base
+
+El robot principal del sistema es **TIAGo** (PAL Robotics), en la configuración disponible en el laboratorio:
+
+- **Plataforma móvil sobre ruedas**: base para desplazarse de forma autónoma en un entorno interior controlado.
+- **Computador interno**:
+  - PC industrial integrado con soporte para **ROS 1**.
+  - Conectividad de red (Ethernet/WiFi) para integrarse en la red del laboratorio.
+- **Cabeza sensorizada**:
+  - **Cámara RGB** integrada para:
+    - Monitorización de la marcha y postura del paciente.
+  - **Altavoz** integrado para:
+    - Instrucciones habladas durante las pruebas.
+    - Apoyar la prueba de audición junto con señales acústicas específicas.
+- **Brazo robótico de 7 GDL**:
+  - Apoyar la prueba de vision.
+- **Sensórica de navegación**:
+  - Láser/scan 2D y  cámara de profundidad para navegación segura en el entorno.
+  - Sensores de seguridad (bumpers, E-stop de hardware).
+
+TIAGo actúa como plataforma central de interacción con el paciente, guía la sesión, presenta instrucciones y coordina las diferentes pruebas psicotécnicas.
+
+#### Unidad auxiliar de pruebas psicotécnicas (Raspberry Pi)
+
+Para las pruebas de **reflejos** y **memoria a corto plazo** se utilizará una unidad dedicada basada en:
+
+- **Raspberry Pi 3 Model B**
+  - Sistema operativo Linux con soporte para ROS y librerías de control de GPIO.
+  - Conectividad WiFi para comunicarse con el PC del TIAGo mediante ROS 1.
+
+
+#### Sensores
+
+Los sensores se agrupan en dos bloques: los integrados en TIAGo y los externos conectados a la Raspberry Pi.
+
+**Sensores integrados en TIAGo**
+
+| Tipo de sensor      | Ubicación           | Magnitud medida                         | Uso principal                                        |
+|---------------------|---------------------|-----------------------------------------|------------------------------------------------------|
+| Cámara RGB          | Cabeza del robot    | Imagen en color                         | Pruebas de postura/marcha/seguimiento      |
+| Altavoz           | Cabeza del robot    | Señal acústica                          | Intrucciones durante pruebas y para pruebas de oído |
+| Sensores de navegación | Base móvil      | Distancia/obstáculos, posición relativa | Navegación segura en el entorno de pruebas          |
+
+**Sensores externos ligados a la Raspberry Pi**
+
+| Tipo de sensor                | Conexión             | Magnitud medida              | Uso principal                              |
+|-------------------------------|----------------------|------------------------------|--------------------------------------------|
+| Panel pulsadores + LEDs integrados | GPIO digitales (entrada/salida) | Detectar pulsaciones y generar estímulos luminosos | Módulo integrado para pruebas de reacción y de memoria |
+| Buzzer / zumbador | GPIO PWM/digital | Generar señales acústicas simples (beeps) | Estímulos auditivos y refuerzo del feedback en test de reacción y memoria |
+| Pantalla LCD 16x2 | I2C             | Mostrar mensajes, instrucciones y resultados en tiempo real | Feedback visual al usuario durante las pruebas de memoria y reflejos |
+
+
+#### Actuadores
+
+Los actuadores incluyen tanto los del propio robot TIAGo como los elementos externos que generan estímulos para el paciente.
+
+**Actuadores integrados en TIAGo**
+
+| Actuador             | Función                                  | Uso en el proyecto                         |
+|----------------------|-------------------------------------------|--------------------------------------------|
+| Motores de la base   | Movimiento del robot en el entorno        | Posicionamiento del robot en la sala       |
+| Motores del brazo    | Gestos y señalización                     | Señalar elementos o acompañar instrucciones |
+| Altavoz              | Reproducción de audio e instrucciones     | Explicar pruebas, dar feedback al paciente  |
+
+**Actuadores externos gestionados por la Raspberry Pi**
+
+| Actuador              | Conexión       | Función                                          | Uso principal                                             |
+|-----------------------|----------------|--------------------------------------------------|-----------------------------------------------------------|
+| LEDs   | GPIO  | Estímulos luminosos individuales por pulsador | Test de reacción y test de memoria (secuencias de LEDs)   |
+| Zumbador / Buzzer     | PWM | Señales acústicas simples (beeps)             | Estímulos auditivos adicionales y refuerzo del feedback   |
+| PANTALLA LCD 16X2     | I2C | Muestra mensajes por pantalla           | Feedback al paciente mientras realiza las pruebas de reflejos y memoria   |
+
+
+#### Periféricos y sistemas de comunicación
+
+Para completar el sistema se consideran los siguientes periféricos y enlaces de comunicación:
+
+**Periféricos**
+
+- **Tablet/Movil**:
+  - Acceso a la interfaz gráfica de control (panel para iniciar pruebas, ver resultados y dar feedback).
+
+**Sistemas de comunicación**
+
+- **Red local del laboratorio (LAN/WiFi)**:
+  - Interconexión entre:
+    - PC interno de TIAGo (nodos ROS 1 principales).
+    - Raspberry Pi 3B.
+    - Tablet del evaluador (interfaz de usuario y herramientas de supervisión).
+- **Protocolo de comunicación de alto nivel**:
+  - ROS 1 para intercambio de mensajes entre nodos distribuidos en TIAGo, Raspberry Pi y PC externo.
+- **Acceso remoto y administración**:
+  - Conexiones SSH a la Raspberry Pi para despliegue, mantenimiento y depuración de nodos.
+
+En conjunto, esta configuración de hardware garantiza que el sistema pueda:
+1. Interactuar de forma natural con el paciente (TIAGo).
+2. Generar y medir estímulos de reacción/memoria con precisión (Raspberry Pi + LEDs + pulsadores + buzzer + Pantalla LED).
+3. Integrarse en la infraestructura de red del laboratorio, manteniendo la modularidad y escalabilidad necesarias para futuras extensiones.
+
+---
 
 ### 2.c) Esquema preliminar de interfaz de usuario (UI/UX) y flujo de interacción con el sistema
 
@@ -665,49 +816,96 @@ Este panel permite al técnico **reubicar rápidamente** al robot y supervisar s
 
 #### 2.c.4. Diagrama de flujo de interacción
 
-```mermaid
-flowchart LR
-  subgraph Usuario["Usuario (navegador web)"]
-    U1[Login facial]
-    U2[Panel de pruebas]
-    U3[Panel administración]
-  end
+```graph TD
+    %% Define estilos para los diferentes componentes
+    classDef usuario fill:#ADD8E6,stroke:#333,stroke-width:2px,color:#000;
+    classDef webserver fill:#90EE90,stroke:#333,stroke-width:2px,color:#000;
+    classDef rosnode fill:#FFB6C1,stroke:#333,stroke-width:2px,color:#000;
+    classDef endpoint fill:#FFFACD,stroke:#666,stroke-width:1px,color:#333;
+    classDef actionserver fill:#DDA0DD,stroke:#666,stroke-width:1px,color:#333;
+    classDef arrow stroke:#666,stroke-width:1.5px;
 
-  subgraph Web["web_server_pkg (servidor web)"]
-    L[Vista /login]
-    API_LOGIN[/Endpoint login/]
-    IDX[Vista principal /]
-    START[/Endpoint start/]
-    STATUS[/Endpoint status/]
-    ANSWER[/Endpoint answer/]
-    PDF[/Endpoint PDF/]
-    ADM[Vista /admin]
-    MOVE[/Endpoint admin/move/]
-    HIST[/Endpoint admin/history/]
-  end
+    %% Subgráficos y Nodos
+    subgraph Cliente (Navegador Web)
+        U1[<i class='fa fa-user'></i> Login de Paciente]
+        U2[<i class='fa fa-list-alt'></i> Panel de Pruebas]
+        U3[<i class='fa fa-cogs'></i> Panel de Administración]
+        class U1,U2,U3 usuario;
+    end
 
-  subgraph ROS["ROS 1 (TIAGo + Raspberry)"]
-    FACE[Acción reconocimiento facial]
-    MEM[Acción memoria]
-    REF[Acción reflejos]
-    AUD[Acción audición]
-    TTS[TTS /tts]
-    MOVE_BASE[/move_base/]
-  end
+    subgraph Servidor Web (web_server_pkg - Flask)
+        L(</login> <br>Vista)
+        API_LOGIN[API: /endpoint/login]
+        IDX(</> <br>Vista Principal)
+        START[API: /endpoint/start]
+        STATUS[API: /endpoint/status]
+        ANSWER[API: /endpoint/answer]
+        PDF[API: /endpoint/pdf]
+        ADM(</admin> <br>Vista)
+        MOVE[API: /admin/move]
+        HIST[API: /admin/history]
+        class L,API_LOGIN,IDX,START,STATUS,ANSWER,PDF,ADM,MOVE,HIST webserver;
+        linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 arrow;
+    end
 
-  U1 --> L --> API_LOGIN --> FACE
-  FACE --> API_LOGIN --> IDX --> U2
+    subgraph Sistema ROS 1 (TIAGo & Raspberry Pi)
+        FACE_ACTION(<i class='fa fa-user-circle'></i> Acción Reconocimiento Facial)
+        MEM_ACTION(<i class='fa fa-brain'></i> Acción Memoria)
+        REF_ACTION(<i class='fa fa-hand-point-right'></i> Acción Reflejos)
+        AUD_ACTION(<i class='fa fa-ear-deaf'></i> Acción Audición)
+        TTS_ACTION(<i class='fa fa-volume-up'></i> Acción TTS /tts)
+        MOVE_BASE_ACTION(<i class='fa fa-location-arrow'></i> move_base)
+        class FACE_ACTION,MEM_ACTION,REF_ACTION,AUD_ACTION,TTS_ACTION,MOVE_BASE_ACTION rosnode;
+    end
 
-  U2 --> START --> MEM & REF & AUD
-  MEM & REF & AUD --> STATUS --> U2
-  U2 --> ANSWER --> AUD
-  U2 --> PDF
+    %% Flujo de interacciones
 
-  U3 --> ADM
-  ADM --> HIST --> U3
-  ADM --> MOVE --> MOVE_BASE
+    U1 -- Petición --> L
+    L -- POST Datos Login --> API_LOGIN
+    API_LOGIN -- Lanza Acción --> FACE_ACTION
+    FACE_ACTION -- Resultado Reconocimiento --> API_LOGIN
+    API_LOGIN -- Redirige --> IDX
+    IDX -- Muestra --> U2
 
-  START --> TTS
+    U2 -- Inicia Batería --> START
+    START -- Lanza Acciones --> MEM_ACTION & REF_ACTION & AUD_ACTION
+    MEM_ACTION & REF_ACTION & AUD_ACTION -- Feedback/Resultados --> STATUS
+    STATUS -- Actualiza --> U2
+
+    U2 -- Entrada Manual --> ANSWER
+    ANSWER -- Actualiza --> AUD_ACTION
+    U2 -- Descarga --> PDF
+
+    U3 -- Carga --> ADM
+    ADM -- Consulta --> HIST
+    HIST -- Muestra --> U3
+    ADM -- Controla --> MOVE
+    MOVE -- Envía Goal --> MOVE_BASE_ACTION
+    MOVE_BASE_ACTION -- Feedback --> ADM
+
+    START -- Instrucciones por Voz --> TTS_ACTION
+
+    %% Estilos de las flechas (para mayor claridad)
+    linkStyle 0 stroke-dasharray: 5 5;
+    linkStyle 1 stroke-dasharray: 5 5;
+    linkStyle 2 stroke-dasharray: 5 5;
+    linkStyle 3 stroke-dasharray: 5 5;
+    linkStyle 4 stroke-dasharray: 5 5;
+    linkStyle 5 stroke-dasharray: 5 5;
+    linkStyle 6 stroke-dasharray: 5 5;
+    linkStyle 7 stroke-dasharray: 5 5;
+    linkStyle 8 stroke-dasharray: 5 5;
+    linkStyle 9 stroke-dasharray: 5 5;
+    linkStyle 10 stroke-dasharray: 5 5;
+    linkStyle 11 stroke-dasharray: 5 5;
+    linkStyle 12 stroke-dasharray: 5 5;
+    linkStyle 13 stroke-dasharray: 5 5;
+    linkStyle 14 stroke-dasharray: 5 5;
+    linkStyle 15 stroke-dasharray: 5 5;
+    linkStyle 16 stroke-dasharray: 5 5;
+    linkStyle 17 stroke-dasharray: 5 5;
+    linkStyle 18 stroke-dasharray: 5 5;
+    linkStyle 19 stroke-dasharray: 5 5;
 ```
 
 ---
@@ -741,199 +939,6 @@ Gracias a esto:
 
 ---
 
-### Paquete 'mover_pkg'
-
-Este paquete agrupa las funcionalidades relacionadas con el **movimiento de la base del robot TIAGo** dentro del entorno de evaluación psicotécnica.
-Su objetivo principal es situar al robot en las posiciones adecuadas para cada prueba (vista, marcha/postura, audición, etc.) y garantizar que la interacción con el paciente se realiza desde una distancia y orientación seguras y cómodas. Proporciona una capa de abstracción sencilla para:
-* Recibir una lista de checkpoints.
-* Enviar los objetivos de navegación correspondientes al stack de movimiento de TIAGo.
-* Confirmar si el robot ha ido alcanzando cada punto de la ruta.
-
-**Arquitectura de Control:**
-> El paquete `mover_pkg` implementa una **clase seguidora de checkpoints** (Follower) que recibe una lista de posiciones del mapa (waypoints)(solo posiciones x e y, y quaternios qz y qw) y las recorre en orden.
-> La lógica de cuándo y a qué puntos debe ir TIAGo **no está dentro de `mover_pkg`**, sino en nodos externos (como el nodo central), que son quienes prepararan la lista de checkpoints y se la pasaran a esta clase cuando sea necesario.
-
----
-
-**Funcionalidades del paquete**
-
-Internamente, la clase se comunica con el sistema de navegación de TIAGo para enviar cada checkpoint como objetivo de navegación y esperar a que se alcance antes de pasar al siguiente. Además, el paquete incluye:
-* Un **launch de RViz**, para visualizar el robot, el mapa y los objetivos de navegación en pruebas de validacion.
-* Un **launch del mapa del laboratorio**, para cargar el entorno donde se moverá TIAGo.
- 
-Como herramienta de validación, `mover_pkg` incorpora también un script `.sh` que:
-1. Lanza RViz.
-2. Tras unos segundos, lanza el nodo del mapa.
-3. Pasado un tiempo adicional, ordena al checkpoint follower que recorra una lista fija de 4 puntos del mapa del laboratorio.
-
-Este script se utiliza solo para **pruebas internas**, con el objetivo de verificar que:
-* El mapa se carga correctamente.
-* La navegación hasta los checkpoints funciona como se espera.
-* La clase de seguimiento de checkpoints se comporta de forma estable antes de integrarla con el nodo central.
-
----
-
-**Script `checkpoint_follower.py`**
-
-Este script implementa la clase 'Follower', responsable de enviar objetivos de navegación al nodo '/move_base' del robot TIAGo y comprobar que el robot comienza a desplazarse, y  se detiene correctamente en cada checkpoint.
-
-La clase actúa como un **cliente ligero de navegación**, encapsulando toda la lógica necesaria para recorrer una lista de poses dentro del mapa. La clase se inicializa creando:
-* un **publicador** a `/move_base/goal` para enviar objetivos de navegación
-* un **suscriptor** a `/robot_pose` para recibir la pose actual del robot
-* un mecanismo que **detecta inicio y fin de movimiento** para ver cuando termina de moverse la base
-
-Una vez inicializado, la clase permite enviar una lista de puntos mediante la funcion 'enviar_puntos()', que recibe una lista de posiciones `[x, y, qz, qw]`, crea un `PoseStamped` para cada una y las envía secuencialmente. Este método permite que nodos externos indiquen una **ruta completa** sin preocuparse por la lógica interna de navegación.
-
----
-
-### 2.b) Especificación de componentes de hardware
-
-En este apartado se detallan los componentes físicos que formarán el sistema robótico de evaluación psicotécnica, distinguiendo entre el robot base TIAGo, la unidad auxiliar basada en Raspberry Pi y el resto de periféricos y sistemas de comunicación. Toda la arquitectura está pensada para poder desplegarse en un entorno clínico controlado.
-
-#### Robot base
-
-El robot principal del sistema es **TIAGo** (PAL Robotics), en la configuración disponible en el laboratorio:
-
-- **Plataforma móvil sobre ruedas**: base para desplazarse de forma autónoma en un entorno interior controlado.
-- **Computador interno**:
-  - PC industrial integrado con soporte para **ROS 1**.
-  - Conectividad de red (Ethernet/WiFi) para integrarse en la red del laboratorio.
-- **Cabeza sensorizada**:
-  - **Cámara RGB** integrada para:
-    - Monitorización de la marcha y postura del paciente.
-  - **Altavoz** integrado para:
-    - Instrucciones habladas durante las pruebas.
-    - Apoyar la prueba de audición junto con señales acústicas específicas.
-- **Brazo robótico de 7 GDL**:
-  - Apoyar la prueba de vision.
-- **Sensórica de navegación**:
-  - Láser/scan 2D y  cámara de profundidad para navegación segura en el entorno.
-  - Sensores de seguridad (bumpers, E-stop de hardware).
-
-TIAGo actúa como plataforma central de interacción con el paciente, guía la sesión, presenta instrucciones y coordina las diferentes pruebas psicotécnicas.
-
-#### Unidad auxiliar de pruebas psicotécnicas (Raspberry Pi)
-
-Para las pruebas de **reflejos** y **memoria a corto plazo** se utilizará una unidad dedicada basada en:
-
-- **Raspberry Pi 3 Model B**
-  - Sistema operativo Linux con soporte para ROS y librerías de control de GPIO.
-  - Conectividad WiFi para comunicarse con el PC del TIAGo mediante ROS 1.
-
-
-#### Sensores
-
-Los sensores se agrupan en dos bloques: los integrados en TIAGo y los externos conectados a la Raspberry Pi.
-
-**Sensores integrados en TIAGo**
-
-| Tipo de sensor      | Ubicación           | Magnitud medida                         | Uso principal                                        |
-|---------------------|---------------------|-----------------------------------------|------------------------------------------------------|
-| Cámara RGB          | Cabeza del robot    | Imagen en color                         | Pruebas de postura/marcha/seguimiento      |
-| Altavoz           | Cabeza del robot    | Señal acústica                          | Intrucciones durante pruebas y para pruebas de oído |
-| Sensores de navegación | Base móvil      | Distancia/obstáculos, posición relativa | Navegación segura en el entorno de pruebas          |
-
-**Sensores externos ligados a la Raspberry Pi**
-
-| Tipo de sensor                | Conexión             | Magnitud medida              | Uso principal                              |
-|-------------------------------|----------------------|------------------------------|--------------------------------------------|
-| Panel pulsadores + LEDs integrados | GPIO digitales (entrada/salida) | Detectar pulsaciones y generar estímulos luminosos | Módulo integrado para pruebas de reacción y de memoria |
-| Buzzer / zumbador | GPIO PWM/digital | Generar señales acústicas simples (beeps) | Estímulos auditivos y refuerzo del feedback en test de reacción y memoria |
-| Pantalla LCD 16x2 | I2C             | Mostrar mensajes, instrucciones y resultados en tiempo real | Feedback visual al usuario durante las pruebas de memoria y reflejos |
-
-
-#### Actuadores
-
-Los actuadores incluyen tanto los del propio robot TIAGo como los elementos externos que generan estímulos para el paciente.
-
-**Actuadores integrados en TIAGo**
-
-| Actuador             | Función                                  | Uso en el proyecto                         |
-|----------------------|-------------------------------------------|--------------------------------------------|
-| Motores de la base   | Movimiento del robot en el entorno        | Posicionamiento del robot en la sala       |
-| Motores del brazo    | Gestos y señalización                     | Señalar elementos o acompañar instrucciones |
-| Altavoz              | Reproducción de audio e instrucciones     | Explicar pruebas, dar feedback al paciente  |
-
-**Actuadores externos gestionados por la Raspberry Pi**
-
-| Actuador              | Conexión       | Función                                          | Uso principal                                             |
-|-----------------------|----------------|--------------------------------------------------|-----------------------------------------------------------|
-| LEDs   | GPIO  | Estímulos luminosos individuales por pulsador | Test de reacción y test de memoria (secuencias de LEDs)   |
-| Zumbador / Buzzer     | PWM | Señales acústicas simples (beeps)             | Estímulos auditivos adicionales y refuerzo del feedback   |
-| PANTALLA LCD 16X2     | I2C | Muestra mensajes por pantalla           | Feedback al paciente mientras realiza las pruebas de reflejos y memoria   |
-
-
-#### Periféricos y sistemas de comunicación
-
-Para completar el sistema se consideran los siguientes periféricos y enlaces de comunicación:
-
-**Periféricos**
-
-- **Tablet/Movil**:
-  - Acceso a la interfaz gráfica de control (panel para iniciar pruebas, ver resultados y dar feedback).
-
-**Sistemas de comunicación**
-
-- **Red local del laboratorio (LAN/WiFi)**:
-  - Interconexión entre:
-    - PC interno de TIAGo (nodos ROS 1 principales).
-    - Raspberry Pi 3B.
-    - Tablet del evaluador (interfaz de usuario y herramientas de supervisión).
-- **Protocolo de comunicación de alto nivel**:
-  - ROS 1 para intercambio de mensajes entre nodos distribuidos en TIAGo, Raspberry Pi y PC externo.
-- **Acceso remoto y administración**:
-  - Conexiones SSH a la Raspberry Pi para despliegue, mantenimiento y depuración de nodos.
-
-En conjunto, esta configuración de hardware garantiza que el sistema pueda:
-1. Interactuar de forma natural con el paciente (TIAGo).
-2. Generar y medir estímulos de reacción/memoria con precisión (Raspberry Pi + LEDs + pulsadores + buzzer + Pantalla LED).
-3. Integrarse en la infraestructura de red del laboratorio, manteniendo la modularidad y escalabilidad necesarias para futuras extensiones.
-
-
-### 2.c) Esquema Preliminar de Interfaz de Usuario (UI/UX) y Flujo de Interacción
-
-Esta sección describe la interacción a través del navegador web, crucial para la operatividad del sistema.
-
-### 2.c.1. Roles y Vistas Principales
-
-* **Modo Profesional en Sala:** Acceso al **Login** (facial), **Panel Principal de Pruebas** (configuración, lanzamiento, resultados, descarga PDF).
-* **Modo Administrador/Técnico:** Acceso al **Panel de Administración** (histórico, mapa 2D, control de movimiento de TIAGo).
-
-### 2.c.2. Flujo de Uso en Modo Paciente
-
-#### a) Login por Reconocimiento Facial
-1.  El usuario accede a la vista de **Login**.
-2.  El profesional pulsa **“Login”**.
-3.  El servidor lanza la **acción de reconocimiento facial**.
-4.  Si la identidad se valida y es **estable** (por mayoría en la ventana deslizante), el sistema redirige al **panel principal** con el nombre del paciente.
-
-#### b) Configuración de la Batería de Pruebas
-* El **Panel Principal** permite seleccionar y ordenar la **cola de pruebas** (Reflejos, Memoria, Audición, etc.) de forma sencilla mediante botones **`+`** y controles de reordenamiento (↑ / ↓).
-* El botón **“Empezar”** inicia la secuencia.
-
-#### c) Ejecución de Pruebas y Feedback en Tiempo Real
-* El servidor lanza las acciones secuencialmente y utiliza **TIAGo (TTS)** para dar instrucciones.
-* La interfaz muestra un **Bloque de Estado** (prueba actual, barra de progreso) y un **Registro de Eventos** (log) que se actualizan mediante *polling* periódico al *backend*.
-
-#### d) Resultados y Entrada Manual (Audición P2)
-* La **columna de resultados** muestra las notas numéricas por prueba (0–10).
-* Para **Audición**, se habilita un **pequeño formulario** para que el profesional introduzca manualmente el número de pitidos que escuchó el paciente (P2), permitiendo al servidor calcular la nota final.
-
-#### e) Generación y Descarga del Informe PDF
-* Al finalizar toda la batería, se activa el botón **“Descargar informe PDF”**.
-* El PDF incluye: Logo, datos del paciente, tabla de resultados detallados (incluyendo desglose de Audición) y la nota legal final.
-
-### 2.c.3. Panel de Administración (Modo Técnico)
-
-El panel `/admin` centraliza las herramientas de supervisión:
-
-* **Histórico de Sesiones:** Tabla con fecha, paciente y notas resumidas. Controles para **Actualizar** y **Limpiar** el histórico.
-* **Supervisión de Robot:**
-    * **Streaming de la Cámara** (vía `web_video_server`).
-    * **Mapa 2D** con la pose actual de TIAGo (`rosbridge_server`).
-    * **Controles de Movimiento:** Formulario para enviar el robot a posiciones preprogramadas o coordenadas manuales (`/move_base`).
-
----
 
 ## 3. Diseño de software y comunicación
 ### 3.a) Arquitectura de nodos en ROS 1 (diagrama de topics, servicios y acciones)
