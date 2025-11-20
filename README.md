@@ -684,6 +684,7 @@ En el **panel principal de pruebas** el diseño se organiza en dos columnas:
     - `➕ Reflejos`
     - `➕ Memoria`
     - `➕ Audición`
+    - Faltan por integrar el resto de pruebas.
   - Lista ordenada con la **cola de pruebas**:
     - Cada ítem muestra:
       - Nombre de la prueba.
@@ -814,99 +815,10 @@ Este panel permite al técnico **reubicar rápidamente** al robot y supervisar s
 
 ---
 
-#### 2.c.4. Diagrama de flujo de interacción
+#### 2.c.4. Vista preliminar de la interfaz
+<img width="3837" height="2389" alt="Screenshot from 2025-11-20 18-21-39" src="https://github.com/user-attachments/assets/6d2bedbe-9ce8-4300-a922-81c281abdcd0" />
 
-```graph TD
-    %% Define estilos para los diferentes componentes
-    classDef usuario fill:#ADD8E6,stroke:#333,stroke-width:2px,color:#000;
-    classDef webserver fill:#90EE90,stroke:#333,stroke-width:2px,color:#000;
-    classDef rosnode fill:#FFB6C1,stroke:#333,stroke-width:2px,color:#000;
-    classDef endpoint fill:#FFFACD,stroke:#666,stroke-width:1px,color:#333;
-    classDef actionserver fill:#DDA0DD,stroke:#666,stroke-width:1px,color:#333;
-    classDef arrow stroke:#666,stroke-width:1.5px;
 
-    %% Subgráficos y Nodos
-    subgraph Cliente (Navegador Web)
-        U1[<i class='fa fa-user'></i> Login de Paciente]
-        U2[<i class='fa fa-list-alt'></i> Panel de Pruebas]
-        U3[<i class='fa fa-cogs'></i> Panel de Administración]
-        class U1,U2,U3 usuario;
-    end
-
-    subgraph Servidor Web (web_server_pkg - Flask)
-        L(</login> <br>Vista)
-        API_LOGIN[API: /endpoint/login]
-        IDX(</> <br>Vista Principal)
-        START[API: /endpoint/start]
-        STATUS[API: /endpoint/status]
-        ANSWER[API: /endpoint/answer]
-        PDF[API: /endpoint/pdf]
-        ADM(</admin> <br>Vista)
-        MOVE[API: /admin/move]
-        HIST[API: /admin/history]
-        class L,API_LOGIN,IDX,START,STATUS,ANSWER,PDF,ADM,MOVE,HIST webserver;
-        linkStyle 0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19 arrow;
-    end
-
-    subgraph Sistema ROS 1 (TIAGo & Raspberry Pi)
-        FACE_ACTION(<i class='fa fa-user-circle'></i> Acción Reconocimiento Facial)
-        MEM_ACTION(<i class='fa fa-brain'></i> Acción Memoria)
-        REF_ACTION(<i class='fa fa-hand-point-right'></i> Acción Reflejos)
-        AUD_ACTION(<i class='fa fa-ear-deaf'></i> Acción Audición)
-        TTS_ACTION(<i class='fa fa-volume-up'></i> Acción TTS /tts)
-        MOVE_BASE_ACTION(<i class='fa fa-location-arrow'></i> move_base)
-        class FACE_ACTION,MEM_ACTION,REF_ACTION,AUD_ACTION,TTS_ACTION,MOVE_BASE_ACTION rosnode;
-    end
-
-    %% Flujo de interacciones
-
-    U1 -- Petición --> L
-    L -- POST Datos Login --> API_LOGIN
-    API_LOGIN -- Lanza Acción --> FACE_ACTION
-    FACE_ACTION -- Resultado Reconocimiento --> API_LOGIN
-    API_LOGIN -- Redirige --> IDX
-    IDX -- Muestra --> U2
-
-    U2 -- Inicia Batería --> START
-    START -- Lanza Acciones --> MEM_ACTION & REF_ACTION & AUD_ACTION
-    MEM_ACTION & REF_ACTION & AUD_ACTION -- Feedback/Resultados --> STATUS
-    STATUS -- Actualiza --> U2
-
-    U2 -- Entrada Manual --> ANSWER
-    ANSWER -- Actualiza --> AUD_ACTION
-    U2 -- Descarga --> PDF
-
-    U3 -- Carga --> ADM
-    ADM -- Consulta --> HIST
-    HIST -- Muestra --> U3
-    ADM -- Controla --> MOVE
-    MOVE -- Envía Goal --> MOVE_BASE_ACTION
-    MOVE_BASE_ACTION -- Feedback --> ADM
-
-    START -- Instrucciones por Voz --> TTS_ACTION
-
-    %% Estilos de las flechas (para mayor claridad)
-    linkStyle 0 stroke-dasharray: 5 5;
-    linkStyle 1 stroke-dasharray: 5 5;
-    linkStyle 2 stroke-dasharray: 5 5;
-    linkStyle 3 stroke-dasharray: 5 5;
-    linkStyle 4 stroke-dasharray: 5 5;
-    linkStyle 5 stroke-dasharray: 5 5;
-    linkStyle 6 stroke-dasharray: 5 5;
-    linkStyle 7 stroke-dasharray: 5 5;
-    linkStyle 8 stroke-dasharray: 5 5;
-    linkStyle 9 stroke-dasharray: 5 5;
-    linkStyle 10 stroke-dasharray: 5 5;
-    linkStyle 11 stroke-dasharray: 5 5;
-    linkStyle 12 stroke-dasharray: 5 5;
-    linkStyle 13 stroke-dasharray: 5 5;
-    linkStyle 14 stroke-dasharray: 5 5;
-    linkStyle 15 stroke-dasharray: 5 5;
-    linkStyle 16 stroke-dasharray: 5 5;
-    linkStyle 17 stroke-dasharray: 5 5;
-    linkStyle 18 stroke-dasharray: 5 5;
-    linkStyle 19 stroke-dasharray: 5 5;
-```
 
 ---
 
@@ -1259,7 +1171,61 @@ psico_ws/src/web_server_pkg/
 ```
 ---
 
-###  3.c) Descripción de posibles contenedores Docker y dependencias del entorno.
+
+### 3.c) Descripción de contenedores Docker y dependencias del entorno
+
+En el proyecto se ha usado Docker **solo en el PC/TIAGo** como herramienta de desarrollo para el workspace `psico_ws`. En la **Raspberry Pi 3B** se ha optado por instalar ROS 1 de forma **nativa**, sin contenedores, para evitar problemas de rendimiento y acceso a GPIO (detallado en el punto 4).
+
+---
+
+#### Contenedor principal de desarrollo (PC / TIAGo)
+
+- Imagen base: `ros:noetic` (Ubuntu + ROS Noetic preinstalado).  
+- Objetivo: disponer de un entorno **reproducible** para:
+  - Lanzar `web_server_pkg` (Flask + ROS).
+  - Probar `coordinacion_pkg`, `face_recognition_pkg`, `audicion_pkg`, `mover_pkg`, etc.
+- Características clave:
+  - Usuario de trabajo `robotica_tiago` con permisos para vídeo/USB.
+  - Carpeta `carpeta_compartida/` montada como volumen, donde vive el workspace real `psico_ws`.
+  - `.bashrc` configurado para hacer `source` del `setup_env.sh` del proyecto al entrar en el contenedor.
+  - `network_mode: host` (en `docker-compose`) para compartir la red con TIAGo y el resto de máquinas ROS sin configuraciones extra de puertos.
+
+En la práctica, esto permite que cualquier miembro del equipo levante el contenedor y tenga el mismo entorno ROS+Python para compilar y lanzar nodos del proyecto sin “ensuciar” su sistema.
+
+---
+
+#### Dependencias de sistema y Python
+
+Las dependencias se concentran en el `Dockerfile` (PC/TIAGo) y en los `requirements*.txt` de los paquetes:
+
+- **Dependencias de sistema (APT)**  
+  Instaladas sobre `ros:noetic`:
+  - Herramientas ROS: `rviz`, `ros-noetic-moveit`, `rosbridge-server`, `web-video-server`.
+  - Utilidades base: compilación (`build-essential`, `git`), red (`net-tools`, `iputils-ping`, `ssh`), Python (`python3-pip`, `python-is-python3`).
+
+- **Dependencias Python (PIP)**  
+  Distribuidas entre `requirements_noetic_py38.txt`, `requirements_rpi.txt`, etc.:
+  - **Core web**: `flask`, `flask-cors` para el `web_server_pkg`.
+  - **Visión / IA**:
+    - `opencv-python` para vídeo, reconocimiento y movilidad.
+    - `deepface` para reconocimiento facial (`face_recognition_pkg`).
+    - `mediapipe` para análisis de marcha y postura (`coordinacion_pkg`).
+  - **Cálculo y datos**: `numpy` (y, si se requiere, `pandas` para históricos CSV).
+  - **Informes**: librerías tipo `reportlab` para generar el PDF final.
+
+---
+
+#### Estrategia en la Raspberry Pi 3B (sin Docker)
+
+En la Raspberry Pi 3B se ha decidido:
+
+- Instalar **Ubuntu 20.04 + ROS Noetic** directamente en el sistema.
+- Ejecutar `rpi_pkg` (Memoria, Reflejos, `estado_pulsador.py`) de forma nativa, sin contenedores.
+
+Motivo: garantizar **baja latencia** y acceso directo a GPIO para LEDs, pulsadores, buzzer y pantalla LCD, algo que resultaba poco fiable cuando se intentaba encapsular ROS y GPIO dentro de Docker.
+
+En resumen, Docker se emplea como **entorno controlado de desarrollo y ejecución** en el PC/TIAGo, mientras que en la Raspberry se prioriza la **fiabilidad en tiempo real** con una instalación directa de ROS 1.
+
 
 ## 4. Análisis de viabilidad técnica
 
@@ -1318,8 +1284,79 @@ El action server solo devuelve datos objetivos. La evaluación final requiere es
 
 
 
+#### En cuanto al paquete `web_server_pkg`
+
+- **Riesgo de bloqueo si las acciones ROS se gestionan en el hilo web principal**  
+  - Llamadas síncronas a actions (memoria, reflejos, audición, movilidad) pueden:  
+    - Bloquear el servidor Flask si no se aíslan en hilos o procesos.  
+    - Degradar la capacidad de atender peticiones HTTP (pérdida de fluidez en la UI).
+
+- **Acoplamiento fuerte con el estado de ROS**  
+  - Si un action server no está disponible (por ejemplo, Raspberry apagada, paquete no lanzado), el backend puede:  
+    - Lanzar excepciones si no se controla.  
+    - Dejar la batería de pruebas en un estado intermedio, confuso para el usuario.
+
+- **Latencias variables en red**  
+  - La comunicación TIAGo ↔ Raspberry ↔ servidor web depende de la LAN del laboratorio.  
+  - Picos de latencia pueden provocar:  
+    - Retardos en la actualización del estado en la UI.  
+    - Sensación de “cuelgue” aunque el sistema siga trabajando.
+
+- **Gestión del histórico y ficheros en disco**  
+  - Históricos (CSV) e informes PDF se guardan en disco local:  
+    - Posible crecimiento descontrolado si no se limpia.  
+    - Riesgo de inconsistencia si varios usuarios intentan borrar o regenerar a la vez.
 
 ---
+
+#### En cuanto al paquete `face_recognition_pkg`
+
+- **Dependencia fuerte de condiciones de iluminación y encuadre**  
+  - DeepFace + ArcFace funcionan bien en condiciones controladas, pero:  
+    - Luz pobre, contraluces o sombras fuertes degradan el reconocimiento.  
+    - Oclusiones (mascarillas, gorras) o cambios de postura reducen la precisión.
+
+- **Riesgo de falsos positivos / falsos negativos**  
+  - Si el umbral de similitud es muy permisivo:  
+    - Puede confundirse a dos personas (falso positivo).  
+  - Si se ajusta de forma muy estricta:  
+    - Puede aparecer “Desconocido” incluso para usuarios enrolados (falso negativo).
+
+- **Coste computacional de la inferencia**  
+  - El cálculo de embeddings es relativamente pesado en CPU:  
+    - Puede reducir FPS si se procesa cada frame sin límite.  
+    - Riesgo de que el sistema se perciba lento al intentar reconocer a una persona.
+
+---
+
+#### En cuanto al paquete `coordinacion_pkg`
+
+- **Dependencia del tracking de MediaPipe Pose**  
+  - MediaPipe puede fallar cuando:  
+    - La persona se sale parcialmente del campo de visión.  
+    - Lleva ropa muy amplia, fondos complejos o la cámara vibra.  
+  - Las métricas (tronco, zigzag, cojera) dependen de que el tracking sea estable.
+
+- **Heurísticas no validadas clínicamente**  
+  - Rangos “normal / máximo aceptable” (ángulos, desviaciones, asimetrías) se han ajustado:  
+    - A partir de pruebas internas.  
+    - Sin una validación formal con personal clínico.  
+  - La nota (0–100) es orientativa, no diagnóstica.
+
+- **Sensibilidad a la posición de la cámara y encuadre**  
+  - Variaciones en:  
+    - Altura de la cámara.  
+    - Distancia al paciente.  
+    - Zona de marcha disponible.  
+  impactan en los valores numéricos (por ejemplo, zigzag normalizado).
+
+- **Necesidad de tiempo mínimo de observación**  
+  - Si el tiempo válido (persona bien encuadrada) es demasiado corto:  
+    - Las métricas pueden ser poco representativas.  
+    - La prueba debería considerarse “no concluyente”.
+
+---
+
 
 ### 4.b) Estrategia de mitigación y pruebas iniciales.
 #### En cuanto a la Raspberry pi 3B:
@@ -1384,100 +1421,85 @@ Para mitigar las limitaciones de sincronización y estabilidad detectadas, se ha
   - El sistema es suficientemente estable y preciso para el propósito del psicotécnico
 
 ---
+
  
-#### En cuanto al paquete (`web_server_pkg`)
+#### En cuanto al paquete `web_server_pkg`
 
-- **Separación clara entre lógica web y lógica ROS**  
-  - El servidor Flask:
-    - Solo lanza hilos ligeros para gestionar la ejecución de pruebas.
-    - Delega en clientes de acciones ROS (`pruebas_client.py`) toda la lógica de comunicación.
-  - Esto facilita:
-    - Manejo de errores centralizado (try/except alrededor de cada acción).
-    - Degradación controlada: si una prueba falla, se marca con nota `-1` y se continúa con el resto.
+- **Separación de responsabilidades Web ↔ ROS**  
+  - Flask se encarga de:  
+    - Rutas HTTP, plantillas, histórico, PDF.  
+  - Clientes ROS dedicados (`pruebas_client.py`, `checkpoint_follower_api.py`) gestionan:  
+    - Llamadas a actions.  
+    - Manejo de timeouts y excepciones.  
+  - Muchas operaciones se ejecutan en **hilos independientes**, evitando bloquear el hilo principal de Flask.
 
-- **Control de latencia y bloqueo**  
-  - Los llamados a acciones ROS se hacen con **tiempos de espera razonables**:
-    - Si un servidor no responde en X segundos, se aborta el goal y se registra el error.
-  - El polling de estado desde el navegador (`/status`) se limita a un intervalo fijo para no saturar el servidor.
+- **Control de latencia y fallos en acciones**  
+  - Cada acción se lanza con timeouts razonables:  
+    - Si un servidor no responde, se aborta el goal.  
+    - La prueba se marca como fallida (`nota = -1`) y se continúa con el resto.  
+  - El frontend consulta el estado con un polling moderado, evitando saturar el servidor.
 
-- **Gestión de errores visible para el usuario**  
-  - En la UI:
-    - Mensajes claros cuando una prueba no puede completarse (p. ej., “Raspberry desconectada”).
-    - Posibilidad de volver a lanzar la batería tras solventar el problema.
-  - En el backend:
-    - Registro de errores en un log de servidor para depuración.
+- **Gestión de errores visible al usuario**  
+  - Mensajes claros en la interfaz cuando una prueba no puede ejecutarse (por ejemplo, “Raspberry no disponible”).  
+  - Posibilidad de relanzar la batería una vez solucionado el problema.
 
 - **Pruebas iniciales**  
-  - Simulación de fallos:
-    - Desconectar temporalmente la Raspberry.
-    - Parar el servidor de audición.
-  - Observación:
-    - El sistema sigue funcionando para el resto de pruebas.
+  - Simulación de fallos (apagando la Raspberry, deteniendo el servidor de audición) para comprobar que:  
+    - El webserver no se cuelga.  
     - El informe PDF refleja correctamente qué pruebas han sido válidas y cuáles no.
 
 ---
 
-#### En cuanto al paquete (`face_recognition_pkg`)
+#### En cuanto al paquete `face_recognition_pkg`
 
-- **Protocolo de enrolamiento robusto**  
-  - En `enroll_user.py`:
-    - Captura de varias poses (frente y ligeras rotaciones).
-    - Selección automática del frame más nítido por Laplaciano.
-    - Media de embeddings y normalización.
-  - Recomendación operativa: enrolar al paciente con buena iluminación, sin mascarilla y con gafas habituales.
+- **Protocolo de enrolamiento cuidadoso (`enroll_user.py`)**  
+  - Captura varias poses del usuario (frente, ligeros giros).  
+  - Elige automáticamente el frame más nítido por Laplaciano.  
+  - Calcula la media de embeddings y los normaliza.  
+  - Recomendaciones de uso: buena iluminación, sin oclusiones importantes.
 
-- **Estabilización por mayoría y umbral conservador**  
-  - El servidor de acción:
-    - No decide con un único frame, sino con una **ventana deslizante de predicciones**.
-    - Requiere mayoría consistente para aceptar un nombre.
-  - El umbral de distancia coseno se fija de forma conservadora para reducir falsos positivos (mejor “Desconocido” que confusión entre personas).
+- **Estabilización de predicciones y umbral conservador**  
+  - El servidor de acción utiliza una **ventana de mayoría** para aceptar un nombre:  
+    - Disminuye falsos positivos.  
+  - Se ajusta el umbral de distancia coseno de forma conservadora, de manera que en caso de duda se devuelve `"Desconocido"`.
 
-- **Fallback a login manual**  
-  - Si el reconocimiento falla o las condiciones de luz no son adecuadas:
-    - El sistema puede utilizar el modo `--no-login` (usuario de prueba).
-    - A futuro, se puede añadir un login manual por teclado (nombre / ID).
+- **Estrategia de fallback**  
+  - En caso de reconocimiento fallido (mala luz, etc.):  
+    - El sistema puede trabajar con un usuario genérico (modo prueba).  
+    - En el futuro, se puede incorporar login manual (nombre/ID) como respaldo.
 
 - **Pruebas iniciales**  
-  - Ensayos con varios usuarios:
-    - Distintas distancias.
-    - Cambios de iluminación moderados.
-  - Observación:
-    - El sistema reconoce correctamente cuando se respetan las condiciones básicas (cara centrada, sin oclusiones).
-    - Aparecen “Desconocido” en condiciones adversas, lo cual es aceptable y preferible a errores de identidad.
+  - Ensayos con varios usuarios, distancias y luces:  
+    - En condiciones normales, el reconocimiento es estable.  
+    - En condiciones adversas, es habitual obtener `"Desconocido"`, lo que se considera un comportamiento seguro.
 
 ---
 
-#### En cuanto al paquete (`coordinacion_pkg`)
+#### En cuanto al paquete `coordinacion_pkg`
 
-- **Heurísticas ajustables y normalización de métricas**  
-  - Los rangos “correcto / máximo aceptable” (tronco, zigzag, cojera) se definen de forma explícita y pueden ajustarse:
-    - A partir de pruebas con voluntarios sanos.
-    - Ajustando pesos de cada componente en la nota final.
-  - Se normalizan las señales (por ejemplo, posición de cadera en [0,1]) para reducir la dependencia de resolución y encuadre exacto.
+- **Heurísticas ajustables y normalización de valores**  
+  - Rangos “OK / máximo” para tronco, zigzag y asimetría se han definido explícitamente y se pueden retocar.  
+  - Se normalizan posiciones (por ejemplo, en [0,1]) para disminuir dependencia del encuadre exacto.
 
-- **Gestión de calidad de tracking**  
-  - El nodo:
-    - Solo acumula tiempo y métricas cuando la persona está bien encuadrada y los landmarks tienen visibilidad suficiente.
-    - Muestra mensajes claros cuando la persona está demasiado cerca/lejos o parcialmente fuera de campo.
-  - Si no se alcanza un tiempo válido mínimo, la nota final debe interpretarse con cautela (puede considerarse “prueba no válida”).
+- **Gestión de calidad del tracking**  
+  - El nodo solo contabiliza tiempo **válido** cuando:  
+    - La persona está a una distancia adecuada.  
+    - Todos los landmarks críticos tienen visibilidad suficiente.  
+  - Mensajes claros (“muy cerca”, “muy lejos”, “persona parcial”) ayudan a reconducir la prueba en tiempo real.
 
 - **Registro de métricas y generación de informes**  
-  - En cada segundo de tiempo válido se guarda:
-    - `score_total`, ángulos del tronco, zigzag, asimetrías, etc. en un CSV.
-  - Al terminar:
-    - Se genera un informe TXT con una interpretación cualitativa.
+  - Guardado en CSV de métricas por segundo de tiempo válido.  
+  - Informe TXT con interpretación cualitativa (tronco, zigzag, cojera).  
   - Esto permite:
-    - Analizar los datos a posteriori.
-    - Ajustar umbrales y pesos en función de la experiencia clínica.
+    - Revisión “offline” de las señales.  
+    - Ajuste progresivo de umbrales con feedback clínico.
 
 - **Pruebas iniciales**  
-  - Ensayos de marcha con distintos patrones:
-    - Caminata recta normal.
-    - Caminata exagerando zigzag.
-    - Simulación de cojera (apoyando menos una pierna).
-  - Observación:
-    - La nota global varía de forma coherente con la calidad de la marcha.
-    - Las descripciones cualitativas ayudan a entender qué componente está penalizando más (tronco, trayectoria o asimetría).
+  - Marchas de prueba con distintos patrones:  
+    - Caminata recta.  
+    - Caminata en zigzag.  
+    - Simulación de cojera.  
+  - Las notas varían de forma coherente y los comentarios textuales ayudan a entender qué componente penaliza más.
 
 ---
 
