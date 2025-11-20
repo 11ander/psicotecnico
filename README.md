@@ -910,37 +910,7 @@ Este panel permite al técnico **reubicar rápidamente** al robot y supervisar s
 
 ---
 
-
-
-##### 3. Detalles adicionales sobre el *action server* y `speaker.py`
-
-###### 3.1. Action server de ROS 1 (`audicion_action.py`)
-
-El script `audicion_action.py` implementa un **action server de ROS 1** que actúa como controlador principal de la prueba de audición.
-
-En nuestro caso, `audicion_action.py`:
-* Recibe un **goal** desde el 'web server' (cliente de acciones) para iniciar la prueba de audición completa.
-* Coordina internamente la ejecución de las **dos subpruebas** (conteo de pitidos y tiempo de reacción).
-* Registra cuántos pitidos se han emitido en cada prueba y los aciertos/fallos en la subprueba de reacción.
-
-Al terminar ambas subpruebas, el action server **no envía un veredicto final**, sino un **conjunto de datos**. La evaluación final depende también de la respuesta introducida por el usuario en el 'web server', por lo que el cálculo definitivo se hace en ese nodo central.
-
-Además, hay creado en el propio paquete un cliente de acción ('cliente_action_audicion.py') por si se desea ejecutar este paquete por separado.
-
-###### 3.2. Script `speaker.py` y su clase reutilizable
-
-El archivo `speaker.py` contiene una **clase** para controlar el altavoz del TIAGo. Esta clase abstrae la lógica de salida de audio y ofrece métodos para:
-* Generar **pitidos** con diferentes frecuencias, duraciones e intervalos.
-* Reproducir **texto por voz**, permitiendo que TIAGo dé instrucciones habladas.
-
-Gracias a esto:
-- `audicion_action.py` puede centrarse en la lógica de la prueba, delegando en `speaker.py` todo lo relacionado con la generación de audio.
-- La misma clase puede ser reutilizada desde **otros paquetes** del proyecto cuando se necesiten instrucciones habladas o señales acústicas adicionales, evitando duplicar código y facilitando el mantenimiento del sistema.
-
----
-
-
-## 3. Diseño de software y comunicación
+#### 3. Diseño de software y comunicación
 ### 3.a) Arquitectura de nodos en ROS 1 (diagrama de topics, servicios y acciones)
 
 La arquitectura software se organiza alrededor de un **ROS master común** (en el PC de TIAGo) al que se conectan:
