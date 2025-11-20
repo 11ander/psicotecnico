@@ -173,7 +173,6 @@ flowchart LR
     U2 -- Caracteres leidos --> V1
     W4 -- Pruebas finalizadas --> W3
     W3 -- Resultados parciales --> X["Generacion de PDF"]
-    T5["T5"] -- Informe --> W3
 ```
 
 
@@ -499,7 +498,6 @@ Ficheros raíz (Dockerfile, docker-compose.yml, requirements_rpi.txt…)
 carpeta_compartida/
   Directorio que contiene el workspace completo de ROS 1 (psico_ws) junto con materiales auxiliares:
   - setup_env.sh: script para configurar el entorno (sourcing de ROS y del workspace).
-  - notas: apuntes internos del proyecto.
   - examples/: ejemplos de referencia usados al inicio del desarrollo.
   - psico_ws/: workspace catkin donde residen todos los paquetes del sistema psicotécnico.
 ------------------------------------------------------------
@@ -754,7 +752,7 @@ Esto introducía una limitación de compatibilidad que aumentaba el riesgo de er
 
 En conjunto, estas limitaciones hacían que la solución basada en Docker sobre Raspberry Pi 3B no fuera suficientemente robusta ni determinista para un sistema psicotécnico que debe medir tiempos de reacción con cierta precisión y ofrecer un comportamiento estable durante las pruebas.
 
-### En cuanto al paquete `mover_pkg` (navegación del TIAGo):
+##### En cuanto al paquete `mover_pkg` (navegación del TIAGo):
 - Dependencia del stack de navegación de TIAGo (`/move_base`).
 El paquete no realiza navegación autónoma, sino que depende completamente del action server de navegación.
 Esto implica que cualquier fallo en la carga del mapa o la localización del robot por ejemplo, afectaría directamente al correcto funcionamiento del módulo.
