@@ -1282,7 +1282,7 @@ Estos factores pueden introducir pequeñas desviaciones en el tiempo de reacció
 - Dependencia del web server para el resultado final.
 El action server solo devuelve datos objetivos. La evaluación final requiere esperar a que el usuario introduzca el número de pitidos escuchados. Un fallo en esa interacción puede retrasar o impedir la generación del resultado final.
 
-
+---
 
 #### En cuanto al paquete `web_server_pkg`
 
