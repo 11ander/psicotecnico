@@ -282,7 +282,7 @@ Esta prueba evalúa el tiempo de reacción auditivo del usuario cuando se genera
 
 ---
 
-##### Paquete `face_recognition_pkg`
+### Paquete `face_recognition_pkg`
 
 Este paquete implementa el **módulo de reconocimiento facial** del sistema. Su objetivo es identificar al paciente antes o durante la sesión, asociando la evaluación psicotécnica a una persona concreta.
 
@@ -340,7 +340,7 @@ Este paquete implementa el **módulo de reconocimiento facial** del sistema. Su 
 
 ---
 
-##### Paquete `coordinacion_pkg`
+### Paquete `coordinacion_pkg`
 
 Este paquete implementa la **prueba de movilidad y coordinación** del paciente, utilizando la cámara RGB de TIAGo y un modelo de pose (MediaPipe) para analizar la marcha y la postura durante un intervalo de tiempo.
 
@@ -414,7 +414,7 @@ Este paquete implementa la **prueba de movilidad y coordinación** del paciente,
 
 ---
 
-#### Unidad de interfaz web (web_server_pkg)
+### Unidad de interfaz web (web_server_pkg)
 
 Aunque el `web_server_pkg` es principalmente software, su despliegue se apoya en una pequeña infraestructura hardware que permite que la interfaz gráfica sea accesible desde la red del laboratorio.
 
@@ -889,10 +889,135 @@ En conjunto, esta configuración de hardware garantiza que el sistema pueda:
 2. Generar y medir estímulos de reacción/memoria con precisión (Raspberry Pi + LEDs + pulsadores + buzzer + Pantalla LED).
 3. Integrarse en la infraestructura de red del laboratorio, manteniendo la modularidad y escalabilidad necesarias para futuras extensiones.
 
-### 2.c) Esquema preliminar de interfaz de usuario (UI/UX) y flujo de interacción con el sistema
+
+### 2.c) Esquema Preliminar de Interfaz de Usuario (UI/UX) y Flujo de Interacción
+
+Esta sección describe la interacción a través del navegador web, crucial para la operatividad del sistema.
+
+### 2.c.1. Roles y Vistas Principales
+
+* **Modo Profesional en Sala:** Acceso al **Login** (facial), **Panel Principal de Pruebas** (configuración, lanzamiento, resultados, descarga PDF).
+* **Modo Administrador/Técnico:** Acceso al **Panel de Administración** (histórico, mapa 2D, control de movimiento de TIAGo).
+
+### 2.c.2. Flujo de Uso en Modo Paciente
+
+#### a) Login por Reconocimiento Facial
+1.  El usuario accede a la vista de **Login**.
+2.  El profesional pulsa **“Login”**.
+3.  El servidor lanza la **acción de reconocimiento facial**.
+4.  Si la identidad se valida y es **estable** (por mayoría en la ventana deslizante), el sistema redirige al **panel principal** con el nombre del paciente.
+
+#### b) Configuración de la Batería de Pruebas
+* El **Panel Principal** permite seleccionar y ordenar la **cola de pruebas** (Reflejos, Memoria, Audición, etc.) de forma sencilla mediante botones **`+`** y controles de reordenamiento (↑ / ↓).
+* El botón **“Empezar”** inicia la secuencia.
+
+#### c) Ejecución de Pruebas y Feedback en Tiempo Real
+* El servidor lanza las acciones secuencialmente y utiliza **TIAGo (TTS)** para dar instrucciones.
+* La interfaz muestra un **Bloque de Estado** (prueba actual, barra de progreso) y un **Registro de Eventos** (log) que se actualizan mediante *polling* periódico al *backend*.
+
+#### d) Resultados y Entrada Manual (Audición P2)
+* La **columna de resultados** muestra las notas numéricas por prueba (0–10).
+* Para **Audición**, se habilita un **pequeño formulario** para que el profesional introduzca manualmente el número de pitidos que escuchó el paciente (P2), permitiendo al servidor calcular la nota final.
+
+#### e) Generación y Descarga del Informe PDF
+* Al finalizar toda la batería, se activa el botón **“Descargar informe PDF”**.
+* El PDF incluye: Logo, datos del paciente, tabla de resultados detallados (incluyendo desglose de Audición) y la nota legal final.
+
+### 2.c.3. Panel de Administración (Modo Técnico)
+
+El panel `/admin` centraliza las herramientas de supervisión:
+
+* **Histórico de Sesiones:** Tabla con fecha, paciente y notas resumidas. Controles para **Actualizar** y **Limpiar** el histórico.
+* **Supervisión de Robot:**
+    * **Streaming de la Cámara** (vía `web_video_server`).
+    * **Mapa 2D** con la pose actual de TIAGo (`rosbridge_server`).
+    * **Controles de Movimiento:** Formulario para enviar el robot a posiciones preprogramadas o coordenadas manuales (`/move_base`).
+
+---
 
 ## 3. Diseño de software y comunicación
-### 3.a) Arquitectura de nodos en ROS 1 (diagrama de topics, servicios y acciones).
+### 3.a) Arquitectura de nodos en ROS 1 (diagrama de topics, servicios y acciones)
+
+La arquitectura software se organiza alrededor de un **ROS master común** (en el PC de TIAGo) al que se conectan:
+
+- El **robot TIAGo** (nodos de cámara, navegación, TTS, pruebas de movilidad…).
+- La **Raspberry Pi 3B** (pruebas de memoria y reflejos, estado de pulsadores).
+- El **servidor web** (nodo del `web_server_pkg` que actúa como *cliente de acciones* y orquestador).
+
+A continuación se resumen los nodos más relevantes y sus interfaces.
+
+---
+
+#### 3.a.1. Nodos principales y ubicación
+
+| Máquina         | Paquete / Nodo (ejecutable)                         | Rol principal                                                   |
+|----------------|-----------------------------------------------------|-----------------------------------------------------------------|
+| TIAGo (PC)     | `web_server_pkg/app.py`                             | Servidor web (Flask) + cliente de acciones + generación de PDF |
+| TIAGo (PC)     | `face_recognition_pkg/recognize_action_server.py`   | Acción de reconocimiento facial                                |
+| TIAGo (PC)     | `coordinacion_pkg/mobility_exam_action_server.py`   | Acción de evaluación de movilidad y coordinación               |
+| TIAGo (PC)     | `audicion_pkg/audicion_action.py`                   | Acción de prueba de audición                                   |
+| TIAGo (PC)     | `/xtion` (drivers cámara RGB de TIAGo)              | Publica imágenes RGB para reconocimiento y movilidad           |
+| TIAGo (PC)     | `/move_base` + `/robot_pose`                        | Navegación y localización del robot                            |
+| TIAGo (PC)     | `/tts` (pal_interaction_msgs/TtsAction)             | Text-to-speech del robot TIAGo                                 |
+| Raspberry Pi   | `rpi_pkg/servidor_memoria.py`                       | Acción prueba de memoria (LEDs + pulsadores)                   |
+| Raspberry Pi   | `rpi_pkg/servidor_reflejos.py`                      | Acción prueba de reflejos                                      |
+| Raspberry Pi   | `rpi_pkg/estado_pulsador.py`                        | Publica el estado de un pulsador para pruebas de audición      |
+| PC / TIAGo     | `rosbridge_server`                                  | Puente WebSocket ↔ ROS (UI de mapa/cámara en panel Admin)      |
+| PC / TIAGo     | `web_video_server`                                  | Streaming de la cámara RGB vía HTTP                            |
+
+> El `web_server_pkg` se ejecuta en el PC de TIAGo o en un PC externo, pero siempre conectado al mismo ROS master.
+
+---
+
+#### 3.a.2. Acciones ROS por prueba psicotécnica
+
+Cada prueba se modela como un **Action Server** de ROS. El servidor web actúa como cliente y envía un `goal` por cada prueba que el usuario elija.
+
+| Prueba                | Paquete / Nodo servidor                                   | Acción (nombre)           | Goal (campos clave)      | Result (resumen)                                    | Cliente principal           |
+|-----------------------|-----------------------------------------------------------|---------------------------|--------------------------|----------------------------------------------------|-----------------------------|
+| Reconocimiento facial | `face_recognition_pkg/recognize_action_server.py`        | `face_recognition_action` | `ejecutar: bool`         | `nombre: string` (o `"Desconocido"`)               | `web_server_pkg` (login)    |
+| Memoria (Raspberry)   | `rpi_pkg/servidor_memoria.py`                             | `memoria`                 | p.ej. `input: bool`      | Nota numérica (0–10)                               | `web_server_pkg`            |
+| Reflejos (Raspberry)  | `rpi_pkg/servidor_reflejos.py`                            | `reflejos`                | p.ej. `input: bool`      | Nota numérica (0–10)                               | `web_server_pkg`            |
+| Audición              | `audicion_pkg/audicion_action.py`                         | `audicion_action`         | `ejecutar: bool`         | Métricas P1/P2 (pitidos, aciertos, fallos, nota)   | `web_server_pkg`            |
+| Movilidad / marcha    | `coordinacion_pkg/mobility_exam_action_server.py`         | `mobility_exam_action`    | `ejecutar: bool`         | `score` (0–100), `informe[]`, rutas CSV/Reporte    | Cliente CLI / futuro UI web |
+
+Además:
+
+- El `web_server_pkg` usa un cliente de acción adicional para el TTS:
+  - **Acción:** `/tts` (`pal_interaction_msgs/TtsAction`).
+  - **Uso:** dar instrucciones habladas antes y durante las pruebas.
+
+---
+
+#### 3.a.3. Topics de cámara y sensores externos
+
+**Cámara de TIAGo (RGB)**
+
+- **Topic:** `/xtion/rgb/image_raw/compressed` (`sensor_msgs/CompressedImage`)
+- **Publicador:**
+  - Nodo de cámara de TIAGo.
+- **Suscriptores principales:**
+  - `face_recognition_action_server` (reconocimiento facial).
+  - `mobility_exam_action_server` (estimación de pose para marcha/postura).
+  - `web_video_server` (streaming de vídeo al navegador).
+
+**Sensores Raspberry Pi (GPIO)**
+
+- **Topic de estado de pulsador** (nombre específico definido en `estado_pulsador.py`):
+  - **Publicador:** `rpi_pkg/estado_pulsador.py` (lee un pulsador concreto y enciende su LED asociado).
+  - **Suscriptor:** un nodo del `audicion_pkg`, que usa este topic para saber si el paciente pulsa el botón en el momento del pitido.
+
+**Navegación y posición del robot**
+
+- **Topic `/move_base/goal`** (`move_base_msgs/MoveBaseActionGoal`):
+  - **Publicador:** módulo `checkpoint_follower_api.py` del `web_server_pkg`.
+  - **Suscriptor:** `move_base` (stack de navegación de TIAGo).
+- **Topic `/robot_pose`** (`geometry_msgs/PoseWithCovarianceStamped`):
+  - **Publicador:** nodo de localización (AMCL o equivalente de TIAGo).
+  - **Suscriptor:** `checkpoint_follower_api.py` para detectar si el robot se mueve o se ha detenido.
+
+---
+
 ### 3.b) Estructura del repositorio y principales packages o módulos
 
 El proyecto se organiza en torno a un repositorio Git que incluye, por un lado, la configuración general (Docker, requirements, scripts) y, por otro, el workspace de ROS 1 con todos los paquetes del sistema psicotécnico.
@@ -1184,6 +1309,8 @@ Esto introducía una limitación de compatibilidad que aumentaba el riesgo de er
 
 En conjunto, estas limitaciones hacían que la solución basada en Docker sobre Raspberry Pi 3B no fuera suficientemente robusta ni determinista para un sistema psicotécnico que debe medir tiempos de reacción con cierta precisión y ofrecer un comportamiento estable durante las pruebas.
 
+---
+
 ##### En cuanto al paquete `mover_pkg` (navegación del TIAGo):
 - Dependencia del stack de navegación de TIAGo (`/move_base`).
 El paquete no realiza navegación autónoma, sino que depende completamente del action server de navegación.
@@ -1200,6 +1327,8 @@ Es funcional para un entorno controlado, pero quizas algo limitado a nivel indus
 - Dependencia estricta del frame 'map'.
 Todos los checkpoints se envían en referencia a 'map'.
 Si el sistema de TF tarda en establecerse, o el mapa no está cargado a tiempo, los objetivos podrían fallar o ejecutarse de mala manera.
+
+---
 
 #### En cuanto al paquete `audicion_pkg`:
 - Limitaciones en la sincronización entre pitido y pulsación.
@@ -1241,6 +1370,8 @@ Sin embargo, para el alcance actual del proyecto, priorizar:
   - La precisión de las medidas de reacción
   - La simplicidad de mantenimiento: resulta más crítico que disponer de un entorno completamente contenedorizado.
 
+---
+
  #### En cuanto al paquete `mover_pkg`:
 Para mitigar los problemas detectados y asegurar la viabilidad técnica del sistema, se han aplicado las siguientes medidas:
 - Simplificación del cliente de navegación.
@@ -1256,6 +1387,8 @@ Para mitigar los problemas detectados y asegurar la viabilidad técnica del sist
   - El robot inicia y detiene (quizas esta parte le cuesta más, pero si se configuran correctamente los parámetros, debería mejorar) su movimiento dentro de los tiempos esperados.
   - La secuencia completa de checkpoints se recorre sin errores.
   - El módulo es adecuado para un entorno controlado como un laboratorio.
+
+---
 
 #### En cuanto al paquete `audicion_pkg`:
 Para mitigar las limitaciones de sincronización y estabilidad detectadas, se han adoptado las siguientes estrategias:
@@ -1274,6 +1407,8 @@ Para mitigar las limitaciones de sincronización y estabilidad detectadas, se ha
   - La subprueba de conteo de pitidos funciona sin necesidad de sincronización estricta
   - La subprueba de reacción presenta tiempos coherentes y sin retardos perceptibles
   - El sistema es suficientemente estable y preciso para el propósito del psicotécnico
+
+---
  
 #### En cuanto al paquete (`web_server_pkg`)
 
@@ -1458,7 +1593,7 @@ gantt
     Validación global en laboratorio           :d1, 2025-12-20, 2026-01-05
     Correcciones finales y freeze de código    :d2, 2026-01-03, 2026-01-10
     Preparación demo y entrega                 :milestone, d3, 2026-01-12, 1d
-
+```
 
 graph TD
     J[Jon<br/>Raspberry + Web]
@@ -1482,8 +1617,8 @@ graph TD
     S --> COORD
     S --> FACE
     S --> WEB
+```
 
-### 5.b) Reparto de responsabilidades actualizado, con enfoque colaborativo.
 ### 5.b) Reparto de responsabilidades actualizado, con enfoque colaborativo
 
 Aunque el grupo comenzó a trabajar desde **septiembre**, el reparto de tareas se ha ido especializando por módulos. Cada persona tiene “paquetes estrella” de los que es responsable, pero la **integración** y las **pruebas finales** se abordan de forma conjunta.
