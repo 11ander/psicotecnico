@@ -1508,90 +1508,69 @@ En conjunto, estas estrategias de mitigación permiten que el sistema sea **util
 
 ---
 
-## 5. Cronograma de desarrollo
-### 5.a) Plan temporal desde el Hito 3 hasta la entrega final
+## 5. 🗓️ Cronograma Acelerado y Reparto de Responsabilidades
 
-El proyecto comenzó en **septiembre de 2025** y la entrega final está prevista para el **12 de enero de 2026**.  
-En este apartado nos centramos en la fase desde el **Hito 3** (finales de noviembre) hasta la entrega, donde el objetivo es pasar de tener todos los módulos implementados a un sistema:
+El proyecto comenzó en **septiembre de 2025**. Dada la fase actual (20 de noviembre) y la fecha de entrega fijada para el **15 de diciembre de 2025**, la planificación se concentra en la **consolidación, integración y calibración** del sistema.
 
-- **Integrado** (ROS + Raspberry + webserver + TIAGo).
-- **Estable** (sin cuelgues durante la demo).
-- **Demostrable** (flujo completo: login → batería de pruebas → informe PDF).
+### 5.a) Plan Temporal: Consolidación (Noviembre 20 → Diciembre 15)
 
-#### 5.a.1. Fases previstas
+El objetivo principal es asegurar que los módulos, ya desarrollados individualmente, operen como un sistema **Integrado** (ROS + Webserver + Hardware), **Estable** y **Demostrable** (flujo completo: login → pruebas → informe PDF).
 
-1. **Post–Hito 3: revisión y cierre de arquitectura (semana 1)**  
-   - Ajustar lo pedido por el profesor en el Hito 3.  
-   - Congelar la arquitectura de nodos: nombres de actions, topics, estructura del `web_server_pkg`.  
-   - Dejar claro qué pruebas se lanzan sí o sí desde la interfaz web en el Hito final.
+#### Fases de Consolidación (20/11 - 15/12)
 
-2. **Integración fuerte ROS + webserver + Raspberry (semanas 1–3)**  
-   - Conectar de forma robusta `web_server_pkg` con:
-     - `rpi_pkg` (Memoria/Reflejos).  
-     - `audicion_pkg`.  
-     - `coordinacion_pkg`.  
-     - `face_recognition_pkg`.  
-   - Pruebas de extremo a extremo: desde el navegador hasta el hardware real (TIAGo + Raspberry).
+| Fase | Tareas Clave | Fechas (Inicio → Fin) | Duración |
+| :--- | :--- | :--- | :--- |
+| 1. **Cierre de Arquitectura** | Revisión Post–Hito 3. Congelar la estructura de Actions/Topics. Asegurar que las interfaces ROS están finalizadas y funcionando. | 2025-11-20 → 2025-11-24 | 5 días |
+| 2. **Integración ROS Fuerte** | **Conexión de extremo a extremo** (`web_server_pkg` ↔ TIAGo ↔ RPi). Pruebas de comunicación bidireccional y latencia. | 2025-11-25 → 2025-12-01 | 7 días |
+| 3. **Pulido y Calibración** | Ajuste fino de métricas, umbrales y tiempos de todas las pruebas (`rpi_pkg`, `audicion_pkg`, `coordinacion_pkg`, `vision_pkg`). Asegurar coherencia en las notas. | 2025-11-27 → 2025-12-06 | 10 días |
+| 4. **Interfaz y Reportes** | Finalizar la UI (flujo paciente y panel admin). Implementación robusta de la **Generación de PDF** y persistencia del historial. | 2025-12-02 → 2025-12-09 | 8 días |
+| 5. **Validación Global** | Pruebas de usuario final en el laboratorio. Verificación de estabilidad y rendimiento (*demo ready*). Congelación de código (Freeze). | 2025-12-10 → 2025-12-14 | 5 días |
+| 6. **Entrega Final** | Documentación y presentación. | **2025-12-15** | (Hito) |
 
-3. **Pulido de pruebas individuales y calibración (semanas 2–4)**  
-   - Ajustar parámetros, tiempos, niveles de dificultad y notas:
-     - Reflejos / Memoria (Raspberry + `rpi_pkg`).  
-     - Audición (`audicion_pkg`).  
-     - Visión (`vision_pkg`).  
-     - Movilidad / marcha (`coordinacion_pkg`).  
-     - Reconocimiento facial (`face_recognition_pkg`).  
-   - Asegurarse de que todas las pruebas devuelven métricas y notas coherentes (0–10 o 0–100 según el caso).
-
-4. **Interfaz de usuario, informes y modo administrador (semanas 3–5)**  
-   - Terminar la UI del webserver:
-     - Flujo paciente: login → selección de pruebas → ejecución → resultados.  
-     - Panel admin: histórico de sesiones, mapa 2D de TIAGo, comandos de movimiento.  
-   - Pulir la generación de PDF (informe estandarizado) y la persistencia del histórico.
-
-5. **Validación global y “demo ready” (finales de diciembre)**  
-   - Hacer sesiones completas de prueba en el laboratorio con varios “usuarios internos”.  
-   - Verificar:
-     - Tiempos de respuesta aceptables.  
-     - Ausencia de cuelgues en navegación, acciones o webserver.  
-     - Que el informe final refleja correctamente los resultados de las pruebas.
-
-6. **Buffer de seguridad y preparación de entrega (enero 2026)**  
-   - Corregir bugs detectados en la validación.  
-   - Congelar el código de cara a la demo.  
-   - Revisar documentación (README, hitos, guía de uso) y preparar la presentación para el **12/01/2026**.
-
-#### 5.a.2. Diagrama Gantt (Hito 3 → entrega)
-
-> Fechas aproximadas; sirven para visualizar el plan global.
+#### Diagrama Gantt (Plan Acelerado)
 
 ```mermaid
 gantt
     dateFormat  YYYY-MM-DD
-    title Plan desde Hito 3 hasta entrega final
+    title Plan Acelerado de Consolidación (Nov 20 → Dic 15)
     axisFormat %d/%m
 
-    section Arquitectura e integración
-    Revisión Hito 3 y cierre de arquitectura   :a1, 2025-11-25, 5d
-    Integración ROS + webserver + RPi          :a2, 2025-11-28, 2025-12-18
+    section Cierre e Integración
+    Cierre de Arquitectura (Interfaces ROS) :a1, 2025-11-20, 5d
+    Integración ROS (Web ↔ TIAGo ↔ RPi)    :a2, 2025-11-25, 7d
 
-    section Pulido de pruebas
-    Afinar Memoria/Reflejos (rpi_pkg)          :b1, 2025-12-02, 2025-12-16
-    Pulido Audición + mover_pkg                :b2, 2025-12-02, 2025-12-20
-    Pulido Visión (vision_pkg)                 :b3, 2025-12-05, 2025-12-22
-    Pulido Movilidad (coordinacion_pkg)        :b4, 2025-12-05, 2025-12-22
-    Ajuste Reconocimiento facial               :b5, 2025-12-05, 2025-12-22
+    section Calibración y Módulos
+    Pulido Memoria/Reflejos (rpi_pkg)       :b1, 2025-11-27, 5d
+    Pulido Audición + mover_pkg             :b2, 2025-11-27, 7d
+    Pulido Visión y Facial                  :b3, 2025-12-02, 5d
+    Pulido Movilidad (coordinacion_pkg)     :b4, 2025-12-02, 5d
 
-    section UI, informes y admin
-    Webserver (UI paciente + orquestación)     :c1, 2025-12-09, 2025-12-29
-    Panel admin + histórico + movimiento       :c2, 2025-12-12, 2026-01-05
-    PDF e informe final                        :c3, 2025-12-15, 2025-12-29
+    section UI y Reportes
+    Interfaz UI (Paciente/Admin)            :c1, 2025-12-02, 7d
+    PDF e informe final                     :c2, 2025-12-06, 4d
 
-    section Validación y entrega
-    Validación global en laboratorio           :d1, 2025-12-20, 2026-01-05
-    Correcciones finales y freeze de código    :d2, 2026-01-03, 2026-01-10
-    Preparación demo y entrega                 :milestone, d3, 2026-01-12, 1d
+    section Validación y Entrega
+    Validación Global en Laboratorio        :d1, 2025-12-10, 3d
+    Correcciones finales y Freeze           :d2, 2025-12-13, 2d
+    Entrega y Presentación                  :milestone, 2025-12-15, 1d
 ```
 
+---
+
+### 5.b) Reparto de Responsabilidades
+
+El trabajo ha evolucionado hacia una **especialización por módulos**, aunque la **Validación** y la **Integración ROS final** son responsabilidades compartidas por todo el equipo.
+
+| Integrante | Paquetes principales | Enfoque |
+| :--- | :--- | :--- |
+| **Jon Camiruaga** | `rpi_pkg`, `web_server_pkg` | Raspberry Pi (HW/Reflejos/Memoria) e infraestructura web. |
+| **Ander Pérez** | `audicion_pkg`, `mover_pkg` | Audición y Navegación (Checkpoints). |
+| **Daniel Gutierrez** | `vision_pkg` | Prueba de Visión. |
+| **Asier Burgos** | `coordinacion_pkg`, `face_recognition_pkg`, `web_server_pkg` | Movilidad, Reconocimiento Facial y lógica web. |
+
+#### Mapa de Responsabilidades por Paquete
+
+```mermaid
 graph TD
     J[Jon<br/>Raspberry + Web]
     A[Ander<br/>Audición + Mover]
@@ -1599,39 +1578,6 @@ graph TD
     S[Asier<br/>Movilidad + Face + Web]
 
     RPI[rpi_pkg<br/>Memoria/Reflejos]
-    AUD[audicion_pkg]
-    MOV[mover_pkg]
-    VIS[vision_pkg]
-    COORD[coordinacion_pkg]
-    FACE[face_recognition_pkg]
-    WEB[web_server_pkg]
-
-    J --> RPI
-    J --> WEB
-    A --> AUD
-    A --> MOV
-    D --> VIS
-    S --> COORD
-    S --> FACE
-    S --> WEB
-```
-
-### 5.b) Reparto de responsabilidades actualizado, con enfoque colaborativo
-
-Aunque el grupo comenzó a trabajar desde **septiembre**, el reparto de tareas se ha ido especializando por módulos. Cada persona tiene “paquetes estrella” de los que es responsable, pero la **integración** y las **pruebas finales** se abordan de forma conjunta.
-
----
-
-#### 5.b.1. Mapa de responsabilidades por paquete
-
-```mermaid
-graph TD
-    J[Jon\nRaspberry + Web]
-    A[Ander\nAudición + Mover]
-    D[Daniel\nVisión]
-    S[Asier\nMovilidad + Face + Web]
-
-    RPI[rpi_pkg\nMemoria/Reflejos]
     AUD[audicion_pkg]
     MOV[mover_pkg]
     VIS[vision_pkg]
