@@ -102,7 +102,7 @@
 
 ## 2. Arquitectura del sistema
 
-### 2.a Diagrama general del sistema y descripción de los principales módulos funcionales
+### 2.a) Diagrama general del sistema y descripción de los principales módulos funcionales
 #### Diagrama general del sistema
 
 
@@ -179,7 +179,7 @@ flowchart LR
 
 #### Descripción de los principales módulos funcionales
 
-##### Paquete `rpi_pkg`
+### Paquete `rpi_pkg`
 
 Este paquete agrupa todas las funcionalidades que se ejecutan de forma externa en la **Raspberry Pi 3B**. Su propósito principal es gestionar y ejecutar las pruebas psicotécnicas de reflejos y memoria a corto plazo.
 
@@ -207,6 +207,8 @@ Esta prueba evalúa la capacidad de reacción del paciente.
 
 ###### 2. Prueba de Memoria a Corto Plazo
 
+**Script:** 'memoria.py'
+
 **Descripción Funcional:**
 Esta prueba evalúa la capacidad de memoria a corto plazo del paciente.
 
@@ -231,7 +233,129 @@ Este script no es una prueba psicotécnica, sino un nodo de utilidad que se ejec
 * **Caso de Uso:** Se utiliza en una de las pruebas del módulo de audición. En dicha prueba, el paciente debe presionar este pulsador específico en el momento en que escucha un pitido emitido por el robot TIAGO.
 * **Ayuda Visual:** Para que el usuario pueda identificar fácilmente cuál de los 6 pulsadores de la Raspberry Pi debe utilizar para la prueba de audición, el LED asociado a ese pulsador se programa para que permanezca iluminado de forma fija durante toda la duración de esa prueba.
 
-### 2.b Especificación de componentes de hardware
+---
+
+### Paquete `audicion_pkg`
+
+Este paquete agrupa las funcionalidades relacionadas con la evaluación de la capacidad auditiva del paciente. A diferencia del paquete rpi_pkg, que gestiona LEDs y pulsadores para reflejos y memoria, este módulo coordina los pitidos generados por el TIAGo y la detección de pulsaciones de un pulsador recogidas desde la Raspberry Pi mediante el script estado_pulsador.py.
+
+Su función principal es sincronizar estímulos acústicos emitidos por el robot con la respuesta física del usuario, registrando los tiempos de reacción y validando si la percepción auditiva es correcta.
+
+**Arquitectura de Control:**
+> El paquete audicion_pkg implementa un action server de ROS 1 que se ejecuta desde un ordenador central (script audicion_action.py). Este servidor hace uso de la información publicada por un nodo auxiliar en la Raspberry Pi, encargado de enviar continuamente el estado de un pulsador específico.
+> El web_server actúa como cliente de acciones, enviando un goal al action server para iniciar la prueba de audición. El goal únicamente indica que debe ejecutarse la prueba completa (ambas subpruebas), mientras que el servidor se encarga de toda la ejecución interna.
+> El servidor ejecuta una clase que implementa dos subpruebas auditivas diferentes (conteo de pitidos y tiempo de reaccion auditivo)
+> Una vez finalizadas ambas subpruebas, el action server envía un result al nodo central (web server). Este resultado no es todavía la evaluación final, porque parte del análisis depende de una acción posterior del usuario.
+
+---
+
+###### 1. Subprueba 1 de audicion -- Conteo de pitidos
+
+**Script:** integrado en el script 'prueba_audicion.py'
+**Scripts auxiliares:** 'speaker.py'
+
+**Descripción Funcional:**
+Esta prueba evalúa la percepción auditiva básica y la capacidad de discriminación de estímulos, mediante el conteo de un número determinado de pitidos.
+
+* **Estímulo:** El TIAGo genera una secuencia de pitidos con variación aleatoria tanto en el intervalo entre pitidos como en la cantidad total. El número real de pitidos es conocido por el sistema pero no por el usuario.
+* **Acción:** Una vez finalizada, desde el web server, el usuario indica cuántos pitidos cree haber escuchado.
+* **Evaluación:** El sistema registra el número total de pitidos emitidos, y luego lo envia junto a los datos de la otra subprueba al web server, para que este sea quien genere el resultado con la acción del usuario.
+
+**Implementación:**
+* 'audicion_action.py' registra cuántos pitidos se han de emitir, y manda al TIAGo a realizarlos mediante el la clase creada en el script 'speaker.py'.
+
+---
+
+###### 2. Subprueba 2 de audicion -- Tiempo de Reacción ante estimulos auditivos
+
+**Script:** 'prueba2.py'
+**Scripts auxiliares:** 'speaker.py'
+
+**Descripción Funcional:**
+Esta prueba evalúa el tiempo de reacción auditivo del usuario cuando se generan pitidos desde el altavoz del TIAGo.
+
+* **Estímulo:** Pitidos emitidos mediante la ayuda del script 'speaker.py' a intervalos controlados o aleatorios.
+* **Acción:** El usuario debe pulsar el botón iluminado en la Raspberry Pi en el momento en que escucha el pitido.
+* **Evaluación:** El sistema registra si se pulsa el pulsador en todo momento, y permite registrar el número de aciertos (pulsación desde  que suena el pitido hasta 1 segundo despues) y el número de fallos debidos a una acción del usuario sin que haya habido pitido. Todo esto se envia al nodo central cuando finalize toda la prueba de audición.
+
+**Implementación:**
+* 'prueba2.py' registra cuántos pitidos se han de emitir, y manda al TIAGo a realizarlos mediante el la clase creada en el script 'speaker.py'. La coordinación completa de la prueba corresponde a prueba_audicion.py, que ejecuta esta subprueba cuando el web_server lo solicita y recoge sus resultados.
+
+---
+
+##### 3. Detalles adicionales sobre el *action server* y `speaker.py`
+
+###### 3.1. Action server de ROS 1 (`audicion_action.py`)
+
+El script `audicion_action.py` implementa un **action server de ROS 1** que actúa como controlador principal de la prueba de audición.
+
+En nuestro caso, `audicion_action.py`:
+* Recibe un **goal** desde el 'web server' (cliente de acciones) para iniciar la prueba de audición completa.
+* Coordina internamente la ejecución de las **dos subpruebas** (conteo de pitidos y tiempo de reacción).
+* Registra cuántos pitidos se han emitido en cada prueba y los aciertos/fallos en la subprueba de reacción.
+
+Al terminar ambas subpruebas, el action server **no envía un veredicto final**, sino un **conjunto de datos**. La evaluación final depende también de la respuesta introducida por el usuario en el 'web server', por lo que el cálculo definitivo se hace en ese nodo central.
+
+Además, hay creado en el propio paquete un cliente de acción ('cliente_action_audicion.py') por si se desea ejecutar este paquete por separado.
+
+###### 3.2. Script `speaker.py` y su clase reutilizable
+
+El archivo `speaker.py` contiene una **clase** para controlar el altavoz del TIAGo. Esta clase abstrae la lógica de salida de audio y ofrece métodos para:
+* Generar **pitidos** con diferentes frecuencias, duraciones e intervalos.
+* Reproducir **texto por voz**, permitiendo que TIAGo dé instrucciones habladas.
+
+Gracias a esto:
+- `audicion_action.py` puede centrarse en la lógica de la prueba, delegando en `speaker.py` todo lo relacionado con la generación de audio.
+- La misma clase puede ser reutilizada desde **otros paquetes** del proyecto cuando se necesiten instrucciones habladas o señales acústicas adicionales, evitando duplicar código y facilitando el mantenimiento del sistema.
+
+---
+
+### Paquete 'mover_pkg'
+
+Este paquete agrupa las funcionalidades relacionadas con el **movimiento de la base del robot TIAGo** dentro del entorno de evaluación psicotécnica.
+Su objetivo principal es situar al robot en las posiciones adecuadas para cada prueba (vista, marcha/postura, audición, etc.) y garantizar que la interacción con el paciente se realiza desde una distancia y orientación seguras y cómodas. Proporciona una capa de abstracción sencilla para:
+* Recibir una lista de checkpoints.
+* Enviar los objetivos de navegación correspondientes al stack de movimiento de TIAGo.
+* Confirmar si el robot ha ido alcanzando cada punto de la ruta.
+
+**Arquitectura de Control:**
+> El paquete `mover_pkg` implementa una **clase seguidora de checkpoints** (Follower) que recibe una lista de posiciones del mapa (waypoints)(solo posiciones x e y, y quaternios qz y qw) y las recorre en orden.
+> La lógica de cuándo y a qué puntos debe ir TIAGo **no está dentro de `mover_pkg`**, sino en nodos externos (como el nodo central), que son quienes prepararan la lista de checkpoints y se la pasaran a esta clase cuando sea necesario.
+
+---
+
+**Funcionalidades del paquete**
+
+Internamente, la clase se comunica con el sistema de navegación de TIAGo para enviar cada checkpoint como objetivo de navegación y esperar a que se alcance antes de pasar al siguiente. Además, el paquete incluye:
+* Un **launch de RViz**, para visualizar el robot, el mapa y los objetivos de navegación en pruebas de validacion.
+* Un **launch del mapa del laboratorio**, para cargar el entorno donde se moverá TIAGo.
+ 
+Como herramienta de validación, `mover_pkg` incorpora también un script `.sh` que:
+1. Lanza RViz.
+2. Tras unos segundos, lanza el nodo del mapa.
+3. Pasado un tiempo adicional, ordena al checkpoint follower que recorra una lista fija de 4 puntos del mapa del laboratorio.
+
+Este script se utiliza solo para **pruebas internas**, con el objetivo de verificar que:
+* El mapa se carga correctamente.
+* La navegación hasta los checkpoints funciona como se espera.
+* La clase de seguimiento de checkpoints se comporta de forma estable antes de integrarla con el nodo central.
+
+---
+
+**Script `checkpoint_follower.py`**
+
+Este script implementa la clase 'Follower', responsable de enviar objetivos de navegación al nodo '/move_base' del robot TIAGo y comprobar que el robot comienza a desplazarse, y  se detiene correctamente en cada checkpoint.
+
+La clase actúa como un **cliente ligero de navegación**, encapsulando toda la lógica necesaria para recorrer una lista de poses dentro del mapa. La clase se inicializa creando:
+* un **publicador** a `/move_base/goal` para enviar objetivos de navegación
+* un **suscriptor** a `/robot_pose` para recibir la pose actual del robot
+* un mecanismo que **detecta inicio y fin de movimiento** para ver cuando termina de moverse la base
+
+Una vez inicializado, la clase permite enviar una lista de puntos mediante la funcion 'enviar_puntos()', que recibe una lista de posiciones `[x, y, qz, qw]`, crea un `PoseStamped` para cada una y las envía secuencialmente. Este método permite que nodos externos indiquen una **ruta completa** sin preocuparse por la lógica interna de navegación.
+
+---
+
+### 2.b) Especificación de componentes de hardware
 
 En este apartado se detallan los componentes físicos que formarán el sistema robótico de evaluación psicotécnica, distinguiendo entre el robot base TIAGo, la unidad auxiliar basada en Raspberry Pi y el resto de periféricos y sistemas de comunicación. Toda la arquitectura está pensada para poder desplegarse en un entorno clínico controlado.
 
@@ -351,17 +475,15 @@ psicotecnico/
 ├─ docker-compose.yml
 ├─ requirements_rpi.txt
 ├─ pswd_tiago
-├─ socorro.txt
-├─ subir_github.txt
 ├─ tutorial_docker.txt
 └─ carpeta_compartida/
    ├─ setup_env.sh
-   ├─ notas
    ├─ examples/
-   └─ psico_ws/              
+   └─ psico_ws/
       ├─ .catkin_workspace
       ├─ build/             
-      ├─ devel/             
+      ├─ devel/
+      ├─ logs/        
       └─ src/
          ├─ audicion_pkg/
          ├─ coordinacion_pkg/
@@ -434,53 +556,178 @@ En resumen, esta estructura uniforme en todos los paquetes (audicion_pkg, vision
 ### Estructura Paquete rpi_pkg:
 ```text
 psico_ws/src/rpi_pkg/
-├─ action/
-│  ├─ Memoria.action
-│  └─ Reflejos.action
-├─ include/
-│  └─ rpi_pkg/
-├─ launch/
-├─ src/
-│  └─ rpi_pkg/
-│     ├─ .gitkeep
-│     ├─ estado_pulsador.py
-│     ├─ grove_rgb_lcd.py
-│     ├─ memoria.py
-│     ├─ reflejos.py
-│     ├─ servidor_memoria.py
-│     └─ servidor_reflejos.py
-├─ CMakeLists.txt
-├─ package.xml
-└─ setup.py
+├── action/
+│   ├── Memoria.action
+│   └── Reflejos.action
+├── include/
+│   └─ rpi_pkg/
+├── launch/
+├── src/
+│   └── rpi_pkg/
+│       ├── estado_pulsador.py
+│       ├── grove_rgb_lcd.py
+│       ├── memoria.py
+│       ├── reflejos.py
+│       ├── servidor_memoria.py
+│       └── servidor_reflejos.py
+├── CMakeLists.txt
+├── package.xml
+└── setup.py
 ```
 ### Estructura Paquete audicion_pkg:
 ```text
 psico_ws/src/audicion_pkg/
-├─ action/
-│  ├─ Audicion.action
-├─ include/
-│  └─ audicion_pkg/
-├─ launch/
-├─ src/
-│  └─ audicion_pkg/
-│     ├─ .gitkeep
-│     ├─ __init__.py
-│     ├─ audicion_action.py
-│     ├─ cliente_action_audicion.py
-│     ├─ notasIMPORTANTES.txt
-│     ├─ prueba2.py
-│     └─ pruba_audicion.py
-│     └─ speaker.py
-├─ CMakeLists.txt
-├─ package.xml
-└─ setup.py
+├── action/
+│   ├── Audicion.action
+├── include/
+│   └── audicion_pkg/
+├── launch/
+├── src/
+│   └── audicion_pkg/
+│       ├── __init__.py
+│       ├── audicion_action.py
+│       ├── cliente_action_audicion.py
+│       ├── notasIMPORTANTES.txt
+│       ├── prueba2.py
+│       ├── pruba_audicion.py
+│       └── speaker.py
+├── CMakeLists.txt
+├── package.xml
+└── setup.py
 ```
 ### Estructura Paquete coordinacion_pkg:
+```text
+psico_ws/src/coordinacion_pkg/
+├── action
+│   └── MobilityExam.action
+├── CMakeLists.txt
+├── include
+│   └── coordinacion_pkg
+├── launch
+│   └── mobility_exam_server.launch
+├── package.xml
+├── setup.py
+└── src
+    └── coordinacion_pkg
+        ├── cliente_action_mobility.py
+        ├── holistic_cam.py
+        ├── holistic_ros_cam.py
+        ├── mobility_exam_30s.py
+        ├── mobility_exam_action_server.py
+        ├── mobility_exam.py
+        ├── mobility_metrics_20251106-153814.csv
+        ├── mobility_report_20251106-153814.txt
+        ├── pruebas
+        │   ├── captures
+        │   │   ├── frame_20251009_164134_135075_0000.png
+        │   │   └── frame_20251009_164148_978871_0000.png
+        │   ├── ros_image_view_qt_buffered.py
+        │   ├── ros_image_view_qt_live.py
+        │   └── save_image_from_topic.py
+        └── speak_api.py
+```
 ### Estructura Paquete face_recognition_pkg:
+```text
+psico_ws/src/face_recognition_pkg/
+├── action
+│   └── FaceRecognition.action
+├── CMakeLists.txt
+├── include
+│   └── face_recognition_pkg
+├── launch
+├── package.xml
+├── setup.py
+└── src
+    └── face_recognition_pkg
+        ├── cliente_action_face.py
+        ├── enroll_user.py
+        ├── __init__.py
+        ├── recognize_action_server.py
+        ├── recognize.py
+        ├── recognize_ros.py
+        ├── requirements_noetic_py38.txt
+        └── requirements.txt
+```
 ### Estructura Paquete mover_pkg:
+```text
+psico_ws/src/mover_pkg/
+├── CMakeLists.txt
+├── configs
+│   └── rviz_configs.rviz
+├── include
+│   └── mover_pkg
+├── launch
+│   └── rviz.launch
+├── maps
+│   ├── Mapa_aula_mod_1.0.pgm
+│   └── Mapa_aula_mod_1.0.yaml
+├── notas.txt
+├── package.xml
+├── scripts
+│   └── run_all.sh
+└── src
+    └── mover_pkg
+        └── checkpoint_follower.py
+```
 ### Estructura Paquete vision_pkg:
+```text
+psico_ws/src/vision_pkg/
+├── CMakeLists.txt
+├── include
+│   └── vision_pkg
+├── launch
+├── package.xml
+├── setup.py
+└── src
+    └── vision_pkg
+        ├── moverbrazotiago.py
+        ├── posibrazotiago.py
+        ├── pruebavision.py
+        ├── servidor_vision
+        └── sources.txt
+```
 ### Estructura Paquete web_server_pkg:
-
+```text
+psico_ws/src/web_server_pkg/
+├── CMakeLists.txt
+├── include
+│   └── web_server_pkg
+├── launch
+├── package.xml
+├── setup.py
+└── src
+    └── web_server_pkg
+        ├── ApiPrototipo.py
+        ├── app.py
+        ├── checkpoint_follower_api.py
+        ├── data
+        │   └── history.csv
+        ├── face_login_client.py
+        ├── notas.txt
+        ├── pruebas_client.py
+        ├── __pycache__
+        │   ├── pruebas_client.cpython-38.pyc
+        │   ├── report.cpython-38.pyc
+        │   └── speak_api.cpython-38.pyc
+        ├── report.py
+        ├── speak_api.py
+        ├── static
+        │   ├── css
+        │   │   ├── app.css
+        │   │   └── index.css
+        │   ├── img
+        │   │   └── logo-deusto.png
+        │   └── js
+        │       ├── admin.js
+        │       ├── index.js
+        │       └── login.js
+        └── templates
+            ├── admin_index.html
+            ├── index.html
+            ├── indexPrototipo.html
+            └── login.html
+```
+---
 
 ###  3.c) Descripción de posibles contenedores Docker y dependencias del entorno.
 
@@ -506,6 +753,11 @@ La Raspberry estaba originalmente configurada con Raspberry Pi OS (Debian). Aunq
 Esto introducía una limitación de compatibilidad que aumentaba el riesgo de errores, especialmente al trabajar con versiones y dependencias específicas para TIAGO.
 
 En conjunto, estas limitaciones hacían que la solución basada en Docker sobre Raspberry Pi 3B no fuera suficientemente robusta ni determinista para un sistema psicotécnico que debe medir tiempos de reacción con cierta precisión y ofrecer un comportamiento estable durante las pruebas.
+
+### En cuanto al paquete `mover_pkg` (navegación del TIAGo):
+
+
+---
 
 ### 4.b) Estrategia de mitigación y pruebas iniciales.
 #### En cuanto a la Raspberry pi 3B:
