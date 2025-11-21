@@ -518,6 +518,63 @@ Una vez inicializado, la clase permite enviar una lista de puntos mediante la fu
 
 ---
 
+### Paquete `vision_pkg`
+
+El paquete vision_pkg agrupa todas las funcionalidades destinadas a la evaluación de la capacidad visual del paciente mediante el robot TIAGo. Este módulo constituye una parte esencial del sistema, ya que permite recrear de manera automatizada y precisa las pruebas de visión habitualmente utilizadas en los exámenes psicotécnicos o pruebas clínicas. Gracias a la combinación del movimiento del brazo robótico y el control de la base móvil del robot, el paquete reproduce condiciones estandarizadas que permiten valorar el desempeño visual de un paciente de forma objetiva y repetible.
+Propósito general del paquete.
+
+
+El objetivo principal de este paquete es evaluar la capacidad visual del paciente mediante la presentación de estímulos físicos (en este caso, un panel con letras). A partir de esta información, el sistema puede asignar una puntuación o nivel de desempeño visual, permitiendo obtener una valoración del estado visual del usuario.
+
+**Funcionalidad del paquete**
+
+**Script: `moverbrazotiago.py`**
+
+- Este script moverbrazo se encarga de mover el brazo del TIAGo a una posición concreta de forma controlada:
+
+- Primero lee la posición actual del brazo desde el tópico '/joint_states', seleccionando solo las 7 articulaciones del brazo.
+
+- Después construye una trayectoria conjunta con las posiciones objetivo (target_pos) y la envía al action server '/arm_controller/follow_joint_trajectory' usando actionlib.
+
+- Espera a que el controlador ejecute el movimiento y comprueba si ha tenido éxito.
+
+Al final, vuelve a leer la posición del brazo para verificar la posición final y calcular el error respecto a la posición objetivo.
+
+**Script: `posibrazotiago.py`**
+
+El script posicion_brazo.py tiene una única función dentro del sistema: leer y obtener la posición actual de las articulaciones del brazo del robot TIAGo antes de ejecutar cualquier movimiento. Su propósito es proporcionar una referencia inicial fiable para otros módulos, especialmente para el script encargado de mover el brazo.
+
+**Script: `pruebavision.py`**
+
+El script prueba_vision.py es el núcleo lógico de la prueba de visión. En este script es donde se realiza toda la comparación entre la cadena de referencia (la que define el sistema o el terapeuta) y la cadena introducida por el paciente a través del web_server. Es decir, aquí se comprueba si lo que el sistema reconoce o espera coincide con lo que el usuario ha indicado, y a partir de esa comparación se obtiene el resultado de la prueba.
+
+Actualmente, el script solo maneja un único nivel de dificultad, pero está pensado para ampliarse a cuatro niveles. En estos futuros niveles se modificará la posición y situación del robot para recrear condiciones distintas de examen visual (por ejemplo, cambiando la distancia o el ángulo).
+
+En este mismo script también se integrará el uso del paquete de movimiento de la base (mover_pkg) y el script `moverbrazo.py`. De esta forma, prueba_vision.py será el encargado de:
+
+- Ordenar el movimiento de la base del robot en cada nivel.
+
+- Posicionar el brazo y el cartel correctamente
+
+- Realizar la lógica de comparación de cadenas y evaluación del desempeño visual del paciente en cada uno de los niveles de la prueba.
+
+**Script: `servidor_vision`**
+
+El script `servidor_vision.py` es el action server del módulo de visión.
+
+Su función principal es actuar como puente entre el web_server y la lógica de la prueba de visión que se ejecuta en prueba_vision.py. A grandes rasgos, se encarga de:
+
+- Crear un action server de ROS (con actionlib) específico para la prueba de visión.
+
+- Recibir un goal desde el web_server, que normalmente incluye la cadena de referencia (las letras o palabra que se quieren usar en la prueba) y, en el futuro, también el nivel de dificultad.
+
+- Lanzar y controlar la ejecución de `prueba_vision.py`, pasándole esa información (cadena, nivel, etc.).
+
+- Ir enviando feedback sobre el estado de la prueba (en curso, error, completada…).
+
+Al finalizar, recoger el resultado de `prueba_vision.py` (aciertos, fallos, nota, etc.) y enviarlo de vuelta al web_server como result de la acción.
+
+
 ### 2.b) Especificación de componentes de hardware
 
 En este apartado se detallan los componentes físicos que formarán el sistema robótico de evaluación psicotécnica, distinguiendo entre el robot base TIAGo, la unidad auxiliar basada en Raspberry Pi y el resto de periféricos y sistemas de comunicación. Toda la arquitectura está pensada para poder desplegarse en un entorno clínico controlado.
@@ -1354,6 +1411,20 @@ El action server solo devuelve datos objetivos. La evaluación final requiere es
   - Si el tiempo válido (persona bien encuadrada) es demasiado corto:  
     - Las métricas pueden ser poco representativas.  
     - La prueba debería considerarse “no concluyente”.
+   
+
+#### En cuanto al paquete `vision_pkg`
+
+- **Enseñanza de poses del brazo sin modo “libre”**
+
+  - El brazo robótico no dispone de un modo de “frenos desactivados” o asistencia/compensación gravitatoria que permita guiarlo manualmente. Como consecuencia, para capturar poses ha sido necesario probar diferentes posiciones de cada articulación, una a una, hasta encontrar una configuración válida para sujetar y orientar el panel con las letras.
+  
+- **Dependencia del punto de partida y riesgo de colisión en el entorno**
+
+  - La primera idea fue mover a TIAGo una distancia constante durante la prueba. Esto es frágil: si el robot no parte exactamente del mismo lugar, puede colisionar con mobiliario u otros elementos del entorno.
+
+- **Efecto sobre la calidad de la evaluación visual**
+  - Variaciones en la pose del brazo y en la posición de la base del robot alteran distancia y ángulos de visión, lo que puede cambiar el tamaño angular de las letras o provocar oclusiones, afectando la validez de la prueba.
 
 ---
 
@@ -1500,6 +1571,13 @@ Para mitigar las limitaciones de sincronización y estabilidad detectadas, se ha
     - Caminata en zigzag.  
     - Simulación de cojera.  
   - Las notas varían de forma coherente y los comentarios textuales ayudan a entender qué componente penaliza más.
+
+#### En cuanto al paquete `vision_pkg`:
+
+  - Catálogo de poses: definir y guardar un pequeño conjunto de poses nominales con en RViz/MoveIt: ajustar las poses con marcadores y validar colisiones en el “planning scene” antes de ejecutar.
+    
+  - Mapeo y localización: con el paquete `mover_pkg` se realizó un mapeo del entorno y un script para que el usuario seleccione la posición de la habitación a la que moverse. Con navegación basada en mapa, TIAGo planificará rutas seguras desde cualquier punto inicial.
+
 
 ---
 
