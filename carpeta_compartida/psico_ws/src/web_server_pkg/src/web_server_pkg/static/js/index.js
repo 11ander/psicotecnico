@@ -23,12 +23,19 @@
   let runPlan   = [];        // Copia congelada al pulsar “Empezar”
   let pollingTimer = null;
 
-  const LABELS = { memoria: "Memoria", reflejos: "Reflejos", audicion: "Audición" };
+  const LABELS = {
+    memoria: "Memoria",
+    reflejos: "Reflejos",
+    audicion: "Audición",
+    coordinacion: "Coordinación"
+  };
+
   function labelOf(k){ return LABELS[k] || (k ? (k[0].toUpperCase()+k.slice(1)) : ''); }
   function tagClass(k){
-    if (k === 'reflejos') return 'bg-info-subtle text-info-emphasis';
-    if (k === 'memoria')  return 'bg-success-subtle text-success-emphasis';
-    if (k === 'audicion') return 'bg-warning-subtle text-warning-emphasis';
+    if (k === 'reflejos')    return 'bg-info-subtle text-info-emphasis';
+    if (k === 'memoria')     return 'bg-success-subtle text-success-emphasis';
+    if (k === 'audicion')    return 'bg-warning-subtle text-warning-emphasis';
+    if (k === 'coordinacion')return 'bg-primary-subtle text-primary-emphasis';
     return 'bg-secondary-subtle text-secondary-emphasis';
   }
 

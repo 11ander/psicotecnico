@@ -16,7 +16,7 @@ import actionlib
 from roslib.message import get_message_class
 
 from speak_api import TiagoSpeaker
-from pruebas_client import MemoriaClient, ReflejosClient, AudicionClient
+from pruebas_client import MemoriaClient, ReflejosClient, AudicionClient, CoordinacionClient
 
 import csv
 from pathlib import Path
@@ -157,7 +157,15 @@ def save_session_csv(sesion: Dict[str, Any], csv_path: Path = HISTORY_CSV):
     Cabeceras se crean si el archivo no existe.
     """
     # Extraer notas por prueba
-    notas = {"memoria": None, "reflejos": None, "audicion": None, "audicion_p1": None, "audicion_p2": None}
+    notas = {
+        "memoria": None,
+        "reflejos": None,
+        "audicion": None,
+        "audicion_p1": None,
+        "audicion_p2": None,
+        "coordinacion": None,
+    }
+
     for p in (sesion.get("pruebas") or []):
         pk = (p.get("prueba") or "").lower()
         if pk == "memoria":
@@ -169,6 +177,8 @@ def save_session_csv(sesion: Dict[str, Any], csv_path: Path = HISTORY_CSV):
             notas["audicion"]    = p.get("puntuacion")
             notas["audicion_p1"] = d.get("nota_p1")
             notas["audicion_p2"] = d.get("nota_p2")
+        elif pk == "coordinacion":
+            notas["coordinacion"] = p.get("puntuacion")
 
     row = {
         "fecha": sesion.get("fecha", ""),
@@ -179,7 +189,9 @@ def save_session_csv(sesion: Dict[str, Any], csv_path: Path = HISTORY_CSV):
         "audicion": notas["audicion"],
         "audicion_p1": notas["audicion_p1"],
         "audicion_p2": notas["audicion_p2"],
+        "coordinacion": notas["coordinacion"],
     }
+
 
     header = list(row.keys())
     new_file = not csv_path.exists()
@@ -197,6 +209,7 @@ def _seed_fake_session(nombre: str = "Prueba"):
     aud_p1 = round(random.uniform(5.0, 10.0), 2)
     aud_p2 = round(random.uniform(5.0, 10.0), 2)
     aud_final = round((aud_p1 + aud_p2) / 2.0, 2)
+    coord = round(random.uniform(5.0, 10.0), 2)
 
     ts = datetime.now()
     sesion = {
@@ -204,28 +217,22 @@ def _seed_fake_session(nombre: str = "Prueba"):
         "hora":  ts.strftime("%H:%M:%S"),
         "paciente": {"nombre": nombre},
         "pruebas": [
-            {"prueba": "memoria",  "puntuacion": mem,      "hora": ts.strftime("%H:%M:%S")},
-            {"prueba": "reflejos", "puntuacion": ref,      "hora": ts.strftime("%H:%M:%S")},
-            {"prueba": "audicion", "puntuacion": aud_final,"hora": ts.strftime("%H:%M:%S"),
-             "detalles": {"nota_p1": aud_p1, "nota_p2": aud_p2}}
+            {"prueba": "memoria",      "puntuacion": mem,      "hora": ts.strftime("%H:%M:%S")},
+            {"prueba": "reflejos",     "puntuacion": ref,      "hora": ts.strftime("%H:%M:%S")},
+            {"prueba": "audicion",     "puntuacion": aud_final,"hora": ts.strftime("%H:%M:%S"),
+             "detalles": {"nota_p1": aud_p1, "nota_p2": aud_p2}},
+            {"prueba": "coordinacion", "puntuacion": coord,    "hora": ts.strftime("%H:%M:%S")},
         ]
     }
 
     SESION.update({
         "ejecutando": False,
-        "pruebas_completadas": ["memoria", "reflejos", "audicion"],
+        "pruebas_completadas": ["memoria", "reflejos", "audicion", "coordinacion"],
         "resultados": list(sesion["pruebas"]),
         "paciente": {"nombre": nombre},
-        "total_pruebas": 3,
+        "total_pruebas": 4,
         "current": "",
     })
-
-    HISTORICO.append(sesion)
-    try:
-        save_session_csv(sesion)
-    except Exception as e:
-        registrar(f"ERROR guardando CSV (seed): {e}")
-
 
 
 # ------------------- Helpers speaker / nombres -------------------
@@ -233,6 +240,7 @@ TEST_DISPLAY = {
     "memoria": "Memoria",
     "reflejos": "Reflejos",
     "audicion": "Audición",
+    "coordinacion": "Coordinación / Movilidad",
 }
 
 def ordinal_es_femenino(n: int) -> str:
@@ -337,10 +345,20 @@ def iniciar_pruebas():
             # Ejecutar la prueba
             if id_prueba == "memoria":
                 puntuacion = MemoriaClient.run()
-                payload = {"prueba": id_prueba, "puntuacion": puntuacion, "hora": datetime.now().strftime("%H:%M:%S")}
+                payload = {
+                    "prueba": id_prueba,
+                    "puntuacion": puntuacion,
+                    "hora": datetime.now().strftime("%H:%M:%S")
+                }
+
             elif id_prueba == "reflejos":
                 puntuacion = ReflejosClient.run()
-                payload = {"prueba": id_prueba, "puntuacion": puntuacion, "hora": datetime.now().strftime("%H:%M:%S")}
+                payload = {
+                    "prueba": id_prueba,
+                    "puntuacion": puntuacion,
+                    "hora": datetime.now().strftime("%H:%M:%S")
+                }
+
             elif id_prueba == "audicion":
                 det = AudicionClient.run()
                 payload = {
@@ -349,8 +367,39 @@ def iniciar_pruebas():
                     "hora": datetime.now().strftime("%H:%M:%S"),
                     "detalles": det or {},
                 }
+
+            elif id_prueba == "coordinacion":
+                # El action devuelve 0–100, lo normalizamos a 0–10 para el informe
+                try:
+                    score_100, informe, csv_path, report_path = CoordinacionClient.run()
+                    puntuacion = round(score_100 / 10.0, 1)
+                    payload = {
+                        "prueba": id_prueba,
+                        "puntuacion": puntuacion,
+                        "hora": datetime.now().strftime("%H:%M:%S"),
+                        "detalles": {
+                            "score_0_100": score_100,
+                            "informe": informe,
+                            "csv_path": csv_path,
+                            "report_path": report_path,
+                        },
+                    }
+                except Exception as e:
+                    registrar(f"ERROR en prueba de coordinación: {e}")
+                    payload = {
+                        "prueba": id_prueba,
+                        "puntuacion": None,
+                        "hora": datetime.now().strftime("%H:%M:%S"),
+                        "detalles": {"error": str(e)},
+                    }
+
             else:
-                payload = {"prueba": id_prueba, "puntuacion": None, "hora": datetime.now().strftime("%H:%M:%S")}
+                payload = {
+                    "prueba": id_prueba,
+                    "puntuacion": None,
+                    "hora": datetime.now().strftime("%H:%M:%S")
+                }
+
 
             SESION["pruebas_completadas"].append(id_prueba)
             SESION["resultados"].append(payload)

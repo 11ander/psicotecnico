@@ -8,6 +8,7 @@ import rospy
 import actionlib
 from rpi_pkg.msg import MemoriaAction, MemoriaGoal, ReflejosAction, ReflejosGoal
 from audicion_pkg.msg import AudicionAction, AudicionGoal
+from coordinacion_pkg.msg import MobilityExamAction, MobilityExamGoal
 
 
 class _BaseClient:
@@ -112,3 +113,72 @@ class AudicionClient(_BaseClient):
             }
         }
         return detalles
+
+
+class CoordinacionClient:
+    """
+    Cliente para la prueba de coordinación / movilidad.
+    Lanza el action 'mobility_exam_action' con ejecutar=True
+    y devuelve:
+      - score_100: nota 0–100 del servidor
+      - informe: lista de líneas de texto (MobilityExamResult.informe)
+      - csv_path, report_path: rutas a los ficheros generados
+    """
+
+    ACTION_NAME = "mobility_exam_action"
+    _lock = threading.Lock()
+    _client = None
+
+    @classmethod
+    def _get_client(cls, wait_server_timeout: float = 10.0):
+        """
+        Inicializa el SimpleActionClient solo una vez.
+        NO hace init_node porque el nodo ya lo has inicializado en app.py
+        (puente_web_ros).
+        """
+        if cls._client is not None:
+            return cls._client
+
+        with cls._lock:
+            if cls._client is not None:
+                return cls._client
+
+            client = actionlib.SimpleActionClient(cls.ACTION_NAME, MobilityExamAction)
+            ok = client.wait_for_server(rospy.Duration(wait_server_timeout))
+            if not ok:
+                raise RuntimeError(
+                    f"No se encontró el servidor de acción '{cls.ACTION_NAME}' "
+                    f"en {wait_server_timeout:.1f}s. ¿Está lanzado mobility_exam_action_server?"
+                )
+
+            cls._client = client
+            return cls._client
+
+    @classmethod
+    def run(cls, timeout: float = 600.0):
+        """
+        Ejecuta la prueba completa.
+        Devuelve (score_100, informe, csv_path, report_path)
+        donde score_100 ∈ [0, 100].
+        """
+        client = cls._get_client()
+
+        goal = MobilityExamGoal()
+        goal.ejecutar = True
+
+        client.send_goal(goal)
+        finished = client.wait_for_result(rospy.Duration(timeout))
+        if not finished:
+            client.cancel_goal()
+            raise RuntimeError("La prueba de coordinación ha excedido el tiempo máximo.")
+
+        result = client.get_result()
+        if not result:
+            raise RuntimeError("La prueba de coordinación no devolvió resultado.")
+
+        score_100   = float(result.score)
+        informe     = list(result.informe or [])
+        csv_path    = str(result.csv_path or "")
+        report_path = str(result.report_path or "")
+
+        return score_100, informe, csv_path, report_path
