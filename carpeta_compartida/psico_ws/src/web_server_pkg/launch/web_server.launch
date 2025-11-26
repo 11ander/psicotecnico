@@ -1,0 +1,26 @@
+<launch>
+  <!-- Flags configurables desde roslaunch -->
+  <arg name="no_login" default="false" />
+  <arg name="mute"     default="false" />
+  <arg name="no_test"  default="false" />
+
+  <!--
+    Nodo webserver (Flask + ROS).
+    IMPORTANTE:
+    - app.py debe ser ejecutable (chmod +x)
+    - Debe ser localizable por roslaunch (scripts/ o instalado vía catkin_install_python)
+  -->
+  <node pkg="web_server_pkg"
+        type="app.py"
+        name="web_server"
+        output="screen"
+        cwd="node"
+        args="$(eval
+          ('--no-login ' if arg('no_login') == 'true' else '') +
+          ('--mute '     if arg('mute')     == 'true' else '') +
+          ('--no-test '  if arg('no_test')  == 'true' else '')
+        )">
+    <!-- Opción alternativa para el mute por entorno, si quieres usar PSICO_MUTE -->
+    <!-- <env name="PSICO_MUTE" value="$(arg mute)" /> -->
+  </node>
+</launch>

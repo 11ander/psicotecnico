@@ -1,0 +1,15 @@
+<launch>
+  <!-- Servidor de la prueba de Audición -->
+  <node pkg="audicion_pkg"
+        type="audicion_action.py"
+        name="audicion_action_server"
+        output="screen">
+    <!--
+      Si audición usa parámetros ~topic, ~rate, etc.,
+      los puedes añadir aquí como <param>.
+      Un ejemplo genérico (ajusta o borra si no aplica):
+    -->
+    <!-- <param name="topic" value="/mic/audio" /> -->
+    <!-- <param name="lang"  value="es_ES" /> -->
+  </node>
+</launch>

@@ -1,0 +1,15 @@
+<launch>
+  <!-- Ruta de la base de datos de embeddings (sobrescribible por arg) -->
+  <arg name="db_path"
+       default="package://face_recognition_pkg/src/face_recognition_pkg/embeddings_db.json" />
+
+  <!-- Servidor de reconocimiento facial -->
+  <node pkg="face_recognition_pkg"
+        type="recognize_action_server.py"
+        name="face_recognition_action_server"
+        output="screen">
+
+    <!-- Esto equivale a pasar _db_path:=... desde rosrun -->
+    <param name="db_path" value="$(arg db_path)" />
+  </node>
+</launch>
