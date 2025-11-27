@@ -4,6 +4,7 @@
 source /home/robotica_tiago/carpeta_compartida/psico_ws/devel/setup.bash
 
 # Lanzar rviz
+export DISABLE_ROS1_EOL_WARNINGS=1
 roslaunch mover_pkg rviz.launch &
 RVIZ_PID=$!
 echo "[INFO] Lanzado rviz con PID $RVIZ_PID"
@@ -20,7 +21,16 @@ MAP_PID=$!
 echo "[INFO] Lanzado map_server con PID $MAP_PID"
 
 # Esperar un momento para asegurarse de que el mapa esta bien lanzado
-sleep 5
+sleep 1
+
+# Cargar mi ws
+source /home/robotica_tiago/carpeta_compartida/psico_ws/devel/setup.bash
+
+# Localizarse en posicion inicial
+rosrun mover_pkg set_initial_pose.py
+
+# Esperar un momento para asegurarse de que el mapa esta bien lanzado
+sleep 10
 
 # Cargar mi ws
 source /home/robotica_tiago/carpeta_compartida/psico_ws/devel/setup.bash
@@ -31,4 +41,5 @@ CHECKPOINT_PID=$!
 echo "[INFO] Lanzado checkpoint_follower con PID $CHECKPOINT_PID"
 
 # Esperar a que terminen todos los procesos lanzados
-wait
+wait $CHECKPOINT_PID
+echo "[INFO] Terminado"
