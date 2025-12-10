@@ -1,0 +1,430 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Pruebas Psicotécnicas</title>
+  <style>
+    :root { font-family: system-ui, Arial, sans-serif; }
+    body { margin: 24px; color: #222; }
+    h1 { font-size: 28px; margin-bottom: 12px; }
+    .row { display: flex; gap: 24px; flex-wrap: wrap; }
+    .card { border: 1px solid #e5e7eb; border-radius: 12px; padding: 16px;
+            box-shadow: 0 1px 2px rgba(0,0,0,.05); background: #fff; min-width: 320px; }
+    .btn { border: 1px solid #d1d5db; background: #f9fafb; padding: 8px 12px;
+           border-radius: 10px; cursor: pointer; font-weight: 600; }
+    .btn:hover { background: #f3f4f6; }
+    .btn.primary { background: #111827; color: #fff; border-color: #111827; }
+    .btn.primary:hover { background: #0b1220; }
+    .btn.small { padding: 4px 8px; font-weight: 500; }
+    .stack { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+    ul.queue { list-style: none; padding: 0; margin: 8px 0 0 0; }
+    ul.queue li { display: flex; align-items: center; justify-content: space-between;
+                  gap: 8px; padding: 8px 10px; border: 1px solid #e5e7eb; border-radius: 10px;
+                  background: #f9fafb; margin-top: 8px; }
+    .tag { padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 700; }
+    .tag.reflejos { background: #e0f2fe; color: #075985; }
+    .tag.memoria  { background: #dcfce7; color: #166534; }
+    .tag.audicion { background: #fde68a; color: #92400e; }
+    .tag.vision { background: #fae8ff; color: #9d3b9e; }
+
+    .muted { color: #6b7280; }
+    pre { background: #0b1020; color: #e5e7eb; padding: 12px; border-radius: 10px; overflow: auto; }
+    .grow { flex: 1 1 360px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    input[type="text"], input[type="number"] { padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px 10px; border-bottom: 1px solid #eee; text-align: left; }
+    
+  </style>
+</head>
+<body>
+  <h1>PSICOTECNICO</h1>
+
+  <!-- Datos paciente y cola -->
+<div class="card grow">
+  <div class="row" style="gap:16px;">
+    <div class="field" style="min-width:240px;">
+      <label>Nombre</label>
+      <input type="text" id="nombre" placeholder="Nombre del paciente">
+    </div>
+    <div class="field" style="min-width:320px;">
+      <label>Apellidos</label>
+      <input type="text" id="apellidos" placeholder="Apellidos del paciente">
+    </div>
+  </div>
+
+  <!-- Campo para cadena de visión (aparece solo si hay visión en la cola) -->
+  <div class="field" id="visionInputField" style="display:none; margin-top:12px;">
+    <label>Cadena de visión (12 caracteres)</label>
+    <input type="text" id="visionCadena" placeholder="Ej: qwertyasdfgh" maxlength="12">
+    <div class="muted" style="font-size:12px;">Introduce la cadena que el paciente vio (12 caracteres)</div>
+  </div>
+
+  <div class="stack" style="margin-top:12px;">
+    <button class="btn" onclick="addTest('reflejos')">➕ Reflejos</button>
+    <button class="btn" onclick="addTest('memoria')">➕ Memoria</button>
+    <button class="btn" onclick="addTest('audicion')">➕ Audición</button>
+    <button class="btn" onclick="addTest('vision')">➕ Visión</button>
+  </div>
+
+  <ul id="queue" class="queue"></ul>
+
+  <div class="stack" style="margin-top:10px;">
+    <button class="btn" onclick="clearQueue()">Vaciar</button>
+    <div class="grow"></div>
+    <button id="startBtn" class="btn primary" onclick="start()" disabled>EMPEZAR</button>
+  </div>
+</div>
+
+    <!-- Estado -->
+    <div class="card grow">
+      <h2 style="margin-top:0">Estado</h2>
+      <div class="muted" id="runState">—</div>
+      <pre id="log" style="min-height:160px; margin-top:8px;"></pre>
+    </div>
+
+    <!-- Resultados en vivo -->
+    <div class="card grow">
+      <h2 style="margin-top:0">Resultados</h2>
+      <ul id="results"></ul>
+    </div>
+
+    <!-- Histórico -->
+    <div class="card grow">
+      <div class="stack" style="justify-content: space-between;">
+        <h2 style="margin:0">Histórico</h2>
+        <button class="btn small" onclick="clearHistory()">Borrar histórico</button>
+      </div>
+      <div style="overflow:auto; max-height:320px; margin-top:8px;">
+        <table id="histTable">
+          <thead>
+            <tr><th>#</th><th>Fecha</th><th>Hora</th><th>Nombre</th><th>Apellidos</th><th>Resumen pruebas</th></tr>
+          </thead>
+          <tbody id="histBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+<script>
+let queue = [];
+let running = false;
+let wasRunning = false;
+
+function labelOf(t){
+  if (t === 'reflejos') return 'Reflejos';
+  if (t === 'memoria')  return 'Memoria';
+  if (t === 'audicion') return 'Audición';
+  if (t === 'vision')   return 'Visión';  // ← Añadido
+  return t;
+}
+function tagClass(t){
+  if (t === 'reflejos') return 'reflejos';
+  if (t === 'memoria')  return 'memoria';
+  if (t === 'audicion') return 'audicion';
+  if (t === 'vision')   return 'vision';  // ← Añadido
+  return '';
+}
+
+function addTest(t){
+  if (running) return;
+  if (queue.includes(t)) return;
+  queue.push(t);
+  renderQueue();
+}
+function removeAt(i){ if (running) return; queue.splice(i,1); renderQueue(); }
+function move(i, d){ if (running) return; const j=i+d; if(j<0||j>=queue.length) return; [queue[i],queue[j]]=[queue[j],queue[i]]; renderQueue(); }
+function clearQueue(){ if (running) return; queue = []; renderQueue(); }
+
+function renderQueue(){
+  const ul = document.getElementById('queue');
+  ul.innerHTML = '';
+  queue.forEach((t, i) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="tag ${tagClass(t)}">${labelOf(t)}</span>
+      <span class="muted">#${i+1}</span>
+      <span>
+        <button class="btn small" onclick="move(${i},-1)">↑</button>
+        <button class="btn small" onclick="move(${i}, 1)">↓</button>
+        <button class="btn small" onclick="removeAt(${i})">✕</button>
+      </span>`;
+    ul.appendChild(li);
+  });
+  enableStartIfReady();
+}
+// === NUEVAS FUNCIONES PARA VISIÓN ===
+function hasVision() {
+  return queue.includes('vision');
+}
+
+function updateVisionInput() {
+  const field = document.getElementById('visionInputField');
+  if (hasVision()) {
+    field.style.display = 'block';
+  } else {
+    field.style.display = 'none';
+  }
+  enableStartIfReady();
+}
+
+// Modificar addTest y removeAt para actualizar el campo de visión
+const originalAddTest = addTest;
+addTest = function(t) {
+  originalAddTest(t);
+  updateVisionInput();
+};
+
+const originalRemoveAt = removeAt;
+removeAt = function(i) {
+  originalRemoveAt(i);
+  updateVisionInput();
+};
+
+const originalClearQueue = clearQueue;
+clearQueue = function() {
+  originalClearQueue();
+  updateVisionInput();
+};
+
+// Modificar enableStartIfReady para incluir validación de visión
+function enableStartIfReady(){
+  const nombre = document.getElementById('nombre').value.trim();
+  const apell  = document.getElementById('apellidos').value.trim();
+  const visionOk = !hasVision() || 
+                   (document.getElementById('visionCadena').value.trim().length === 12);
+  const ok = !running && queue.length > 0 && nombre && apell && visionOk;
+  document.getElementById('startBtn').disabled = !ok;
+}
+
+// Agregar evento al input de visión
+document.getElementById('visionCadena').addEventListener('input', enableStartIfReady);
+
+function enableStartIfReady(){
+  const nombre = document.getElementById('nombre').value.trim();
+  const apell  = document.getElementById('apellidos').value.trim();
+  const ok = !running && queue.length > 0 && nombre && apell;
+  document.getElementById('startBtn').disabled = !ok;
+}
+document.getElementById('nombre').addEventListener('input', enableStartIfReady);
+document.getElementById('apellidos').addEventListener('input', enableStartIfReady);
+
+async function start(){
+  if (queue.length === 0) return;
+  const nombre = document.getElementById('nombre').value.trim();
+  const apell  = document.getElementById('apellidos').value.trim();
+  if (!nombre || !apell) return;
+
+  // Obtener cadena de visión si existe
+  let visionCadena = "";
+  if (hasVision()) {
+    visionCadena = document.getElementById('visionCadena').value.trim();
+    if (visionCadena.length !== 12) {
+      alert("La cadena de visión debe tener exactamente 12 caracteres.");
+      return;
+    }
+  }
+
+  running = true;
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById("results").innerHTML = "";
+  document.getElementById("log").textContent = "";
+
+  await fetch("/start", {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body:JSON.stringify({
+      order: queue, 
+      patient: {nombre, apellidos: apell},
+      vision_cadena: visionCadena  // ← Enviamos la cadena
+    })
+  });
+}
+
+/* === NUEVA VERSION DE renderResults (mantiene lo escrito y permite Enter) === */
+function renderResults(resultados){
+  const ul = document.getElementById("results");
+
+  // 1) Guardar lo que el usuario ya estaba escribiendo en inputs de audición
+  const prevInputs = {};
+  ul.querySelectorAll('input[data-audicion-input="1"]').forEach(inp => {
+    prevInputs[inp.id] = inp.value;
+  });
+
+  // 2) Vaciamos y preparamos lista de inputs que necesitan eventos
+  ul.innerHTML = "";
+  const pendingAudInputs = [];
+
+  (resultados || []).forEach((r, idx) => {
+    const li = document.createElement("li");
+    const nota = (r.puntuacion === null || typeof r.puntuacion === 'undefined') ? '—' : r.puntuacion;
+    let html = `<div><strong>${r.hora || ''}</strong> · ${labelOf(r.prueba)} → nota: ${nota}</div>`;
+
+    if (r.prueba === 'audicion') {
+      const d = r.detalles || {};
+
+      // Métricas: P1 (pulsador) y P2 (conteo)
+      html += `
+        <div class="muted" style="margin-top:6px;">
+          <b>P1 (Pulsador)</b> → Emitidos: <b>${d.pulsador_emitidos ?? '—'}</b>,
+          Aciertos: <b>${d.pulsador_aciertos ?? '—'}</b>,
+          Fallos: <b>${d.pulsador_fallos ?? '—'}</b><br>
+          <b>P2 (Conteo)</b> → Emitidos: <b>${d.conteo_emitidos ?? '—'}</b>
+        </div>
+      `;
+
+      const notaP1 = (d.nota_p1 !== undefined) ? d.nota_p1 : '—';
+      const notaP2 = (d.nota_p2 !== undefined) ? d.nota_p2 : '—';
+      html += `
+        <div style="margin-top:6px;">
+          <b>Nota P1</b> (pulsador): ${notaP1}/10 &nbsp;·&nbsp;
+          <b>Nota P2</b> (conteo): ${notaP2}/10
+        </div>
+      `;
+
+      const yaRespondido = !!(r.respuesta_usuario);
+      const necesita = d.requiere_input && !yaRespondido;
+
+      if (necesita) {
+        const schema = d.input_schema || {};
+        const campo = (schema.campos && schema.campos[0]) ||
+          {name:"p2_contados_paciente",label:"¿Cuántos pitidos escuchaste en la PRUEBA 2?", type:"number"};
+        const inputId = `aud_${idx}_${campo.name}`;
+
+        html += `
+          <div style="margin-top:10px; padding:10px; border:1px dashed #e5e7eb; border-radius:8px;">
+            <div style="font-weight:600; margin-bottom:6px;">${schema.titulo || 'Audición – Respuesta del paciente (P2)'}</div>
+            <div class="muted" style="margin-bottom:8px;">${schema.descripcion || ''}</div>
+            <div class="field" style="max-width:260px;">
+              <label>${campo.label || 'Respuesta'}</label>
+              <input
+                type="${campo.type || 'number'}"
+                id="${inputId}"
+                data-audicion-input="1"
+                min="${campo.min ?? 0}"
+              />
+            </div>
+            <div class="stack" style="margin-top:8px;">
+              <button class="btn small" onclick="enviarRespuestaAudicion(${idx}, '${campo.name}', '${inputId}')">Guardar</button>
+            </div>
+          </div>
+        `;
+
+        pendingAudInputs.push({ inputId, idx, fieldName: campo.name });
+      } else if (yaRespondido) {
+        const v = r.respuesta_usuario || {};
+        if (typeof v.p2_contados_paciente !== 'undefined') {
+          html += `<div style="margin-top:6px;">✅ Respuesta guardada (P2): <b>${v.p2_contados_paciente}</b></div>`;
+        }
+      }
+    }
+
+    li.innerHTML = html;
+    ul.appendChild(li);
+  });
+
+  // 3) Restaurar valores previos y añadir Enter para enviar
+  pendingAudInputs.forEach(info => {
+    const inp = document.getElementById(info.inputId);
+    if (!inp) return;
+
+    if (prevInputs[info.inputId] !== undefined) {
+      inp.value = prevInputs[info.inputId];
+    }
+
+    inp.addEventListener('keydown', (ev) => {
+      if (ev.key === 'Enter') {
+        enviarRespuestaAudicion(info.idx, info.fieldName, info.inputId);
+      }
+    });
+  });
+}
+
+async function enviarRespuestaAudicion(index, fieldName, inputId){
+  const valRaw = document.getElementById(inputId).value.trim();
+  if (valRaw === '') return alert("Introduce un número, por favor.");
+  const val = Number(valRaw);
+  if (!Number.isFinite(val) || val < 0) return alert("Valor inválido.");
+
+  await fetch("/answer", {
+    method:"POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ index, values: { [fieldName]: val } })
+  });
+
+  setTimeout(poll, 200);
+}
+
+function renderHistory(filas){
+  const tb = document.getElementById('histBody');
+  tb.innerHTML = '';
+  (filas || []).forEach((sesion, idx) => {
+    const p = sesion.paciente || {};
+    const pruebas = sesion.pruebas || [];
+    const resumen = pruebas.map(x => {
+      const nota = (x.puntuacion === null || typeof x.puntuacion === 'undefined') ? '—' : x.puntuacion;
+      const etiqueta = labelOf(x.prueba || '');
+      let extra = '';
+      if (x.prueba === 'audicion') {
+        const d = x.detalles || {};
+        const userCount = x.respuesta_usuario && x.respuesta_usuario.p2_contados_paciente;
+        const p1Txt = (d.nota_p1 !== undefined) ? `P1=${d.nota_p1}/10` : `P1=—/10`;
+        const p2Txt = (d.nota_p2 !== undefined) ? `P2=${d.nota_p2}/10` : `P2=—/10`;
+        const contadoTxt = (userCount !== undefined) ? ` · Contó P2: ${userCount}` : '';
+        extra = ` · ${p1Txt}; ${p2Txt}${contadoTxt}`;
+      }
+      return `${etiqueta}: ${nota}${extra}${x.hora ? ' ('+x.hora+')' : ''}`;
+    }).join(', ');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${idx+1}</td>
+      <td>${sesion.fecha || ''}</td>
+      <td>${sesion.hora || ''}</td>
+      <td>${p.nombre || ''}</td>
+      <td>${p.apellidos || ''}</td>
+      <td>${resumen}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+async function loadHistory(){
+  const r = await fetch("/history");
+  const j = await r.json();
+  renderHistory(j.filas || []);
+}
+
+async function clearHistory(){
+  if (!confirm("¿Borrar todo el histórico? Esta acción no se puede deshacer.")) return;
+  await fetch("/history/clear", {method:"POST"});
+  await loadHistory();
+}
+
+async function poll(){
+  const r = await fetch("/status");
+  const j = await r.json();
+
+  const estado = j.estado || {};
+  const registro = j.registro || [];
+  document.getElementById("log").textContent = registro.join("\n");
+
+  running = !!estado.ejecutando;
+  const hechas = estado.pruebas_completadas || [];
+  const txt = running ? `Ejecutando… (completadas: ${hechas.length})`
+                      : `Inactivo (completadas: ${hechas.length})`;
+  document.getElementById('runState').textContent = txt;
+
+  if (wasRunning && !running) {
+    loadHistory();
+  }
+  wasRunning = running;
+
+  renderResults(estado.resultados || []);
+  enableStartIfReady();
+}
+
+renderQueue();
+loadHistory();
+setInterval(poll, 800);
+</script>
+</body>
+</html>
