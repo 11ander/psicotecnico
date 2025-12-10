@@ -1,0 +1,8 @@
+<launch>
+  <!-- Servidor de la prueba de Visión -->
+  <node pkg="vision_pkg"
+        type="servidor_vision.py"
+        name="vision_action_server"
+        output="screen">
+  </node>
+</launch>

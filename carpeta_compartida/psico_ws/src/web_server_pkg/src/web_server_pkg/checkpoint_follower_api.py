@@ -28,7 +28,9 @@ class Follower:
         self.punto_vision1 = [2.9012330405494886, -1.293344511139235, -0.4588533251208141, 0.888512029195763]
         self.punto_vision2 = [2.2037956776648566, 0.061978901102042926, -0.5214428312970412, 0.8532862202619502]
         self.punto_vision3 = [1.5780124426358513, 1.4079240508893582, -0.6134467796664745, 0.7897360625657358]
-        
+        self.punto_coordinacion = [6.647815751420979, -2.0986998827950143, 0.9628602192184542, 0.27000036712306563]
+
+
         # Proteger init_node para no re-inicializar ROS si ya está activo
         if not rospy.core.is_initialized():
             rospy.init_node("checkpoint_action_client", anonymous=True)

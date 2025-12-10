@@ -9,6 +9,7 @@ import actionlib
 from rpi_pkg.msg import MemoriaAction, MemoriaGoal, ReflejosAction, ReflejosGoal
 from audicion_pkg.msg import AudicionAction, AudicionGoal
 from coordinacion_pkg.msg import MobilityExamAction, MobilityExamGoal
+from vision_pkg.msg import VisionAction, VisionGoal
 
 
 class _BaseClient:
@@ -182,3 +183,60 @@ class CoordinacionClient:
         report_path = str(result.report_path or "")
 
         return score_100, informe, csv_path, report_path
+
+
+class VisionClient(_BaseClient):
+    ACTION_NAME = "vision_action"
+
+    @classmethod
+    def run(cls, wait_server_timeout: float = 5.0, result_timeout: float = 600.0) -> Optional[Dict[str, Any]]:
+        """
+        Lanza la prueba de visión y devuelve un diccionario con:
+          - frase_1, frase_2  (texto original que estaba en el papel/cuaderno)
+          - requiere_input = True
+          - input_schema      (para que el front pida las dos frases que recuerda el paciente)
+        """
+        cls._ensure_node("web_vision_client")
+        client = actionlib.SimpleActionClient(cls.ACTION_NAME, VisionAction)
+        if not client.wait_for_server(rospy.Duration(wait_server_timeout)):
+            return None
+
+        goal = VisionGoal()
+        if hasattr(goal, "ejecutar"):
+            goal.ejecutar = True
+
+        client.send_goal(goal)
+        client.wait_for_result(rospy.Duration(result_timeout))
+        res = client.get_result()
+        if not res:
+            return None
+
+        # Intentamos ser robustos con los nombres de campos
+        frase1 = getattr(res, "frase_1", None) or getattr(res, "frase1", "") or ""
+        frase2 = getattr(res, "frase_2", None) or getattr(res, "frase2", "") or ""
+
+        detalles = {
+            "frase_1": frase1,
+            "frase_2": frase2,
+            "requiere_input": True,
+            "input_schema": {
+                "titulo": "Visión – Respuesta del paciente",
+                "descripcion": (
+                    "Introduce las frases que el paciente recuerda, "
+                    "en el mismo orden en que se mostraron."
+                ),
+                "campos": [
+                    {
+                        "name": "vision_frase_1",
+                        "label": "Frase 1 recordada por el paciente",
+                        "type": "text",
+                    },
+                    {
+                        "name": "vision_frase_2",
+                        "label": "Frase 2 recordada por el paciente",
+                        "type": "text",
+                    },
+                ],
+            },
+        }
+        return detalles

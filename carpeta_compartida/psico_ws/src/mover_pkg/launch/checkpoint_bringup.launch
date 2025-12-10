@@ -1,0 +1,32 @@
+<launch>
+  <!-- Servidor de mapa -->
+  <node
+    pkg="map_server"
+    type="map_server"
+    name="map_server"
+    args="$(find mover_pkg)/maps/Mapa_aula_mod_1.0.yaml"
+    output="screen" />
+
+  <!-- Poner la pose inicial -->
+  <node
+    pkg="mover_pkg"
+    type="set_initial_pose.py"
+    name="set_initial_pose"
+    output="screen" />
+
+  <!-- Seguidor de checkpoints -->
+  <node
+    pkg="mover_pkg"
+    type="checkpoint_follower.py"
+    name="checkpoint_follower"
+    output="screen" />
+
+  <!-- Opcional: RViz, si lo queréis siempre -->
+  <!--
+  <node
+    pkg="mover_pkg"
+    type="rviz.launch"
+    name="rviz"
+    />
+  -->
+</launch>

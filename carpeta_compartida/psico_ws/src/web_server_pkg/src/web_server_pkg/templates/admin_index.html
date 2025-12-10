@@ -65,12 +65,8 @@
             <div class="mb-4">
               <h6 class="fw-semibold mb-2">Cámara frontal</h6>
               <div class="ratio ratio-16x9 bg-dark rounded-3 overflow-hidden shadow-sm">
-                <!--
-                  Si ves la página desde otra máquina, cambia 127.0.0.1 por la IP del PC ROS.
-                -->
                 <img
                   id="cameraStream"
-                  src="http://127.0.0.1:8080/stream?topic=/xtion/rgb/image_raw&quality=80&width=640&height=360"
                   class="w-100 h-100"
                   alt="Vídeo cámara TIAGo"
                   style="object-fit: cover;"
@@ -84,15 +80,62 @@
 
             <!-- Bloque de mapa tipo RViz -->
             <div class="mb-4">
-              <h6 class="fw-semibold mb-2">Mapa y posición del robot</h6>
+              <h6 class="fw-semibold mb-2">RViz (vista remota)</h6>
               <div class="bg-light border rounded-3 p-2">
-                <div id="nav2dViewer" style="width: 100%; height: 300px;"></div>
+                <div class="ratio ratio-1x1">
+                  <iframe
+                    id="rviz-frame"
+                    class="w-100 h-100 border-0 rounded-3"
+                    allowfullscreen
+                  ></iframe>
+                </div>
               </div>
               <div class="form-text mt-2">
-                Visualización 2D usando <code>nav2djs</code> (mapa de <code>/map</code> y base del TIAGo).
-                Necesita <code>rosbridge_server</code> y <code>tf2_web_republisher</code> activos.
+                RViz ejecutándose en el servidor (Xvfb + x11vnc + noVNC) e incrustado aquí.
               </div>
             </div>
+
+            <script>
+              (function () {
+                // Host del servidor al que estás conectado (IP del PC ROS o dominio Pinggy)
+                const host = window.location.hostname || "127.0.0.1";
+
+                // Protocolo actual (http / https)
+                const protocol = window.location.protocol === "https:" ? "https:" : "http:";
+
+                // --- Cámara: web_video_server (por defecto puerto 8080) ---
+                const camPort = 8080;
+                const camUrl =
+                  protocol + "//" +
+                  host +
+                  ":" +
+                  camPort +
+                  "/stream?topic=/xtion/rgb/image_raw&quality=80&width=640&height=360";
+
+                const camImg = document.getElementById("cameraStream");
+                if (camImg) {
+                  camImg.src = camUrl;
+                }
+
+                // --- RViz: noVNC (puerto HTTP 6081) ---
+                const vncHttpPort = 6081;
+                const vncUrl =
+                  protocol + "//" +
+                  host +
+                  ":" +
+                  vncHttpPort +
+                  "/vnc.html?host=" +
+                  host +
+                  "&port=" +
+                  vncHttpPort +
+                  "&autoconnect=1&resize=scale";
+
+                const iframe = document.getElementById("rviz-frame");
+                if (iframe) {
+                  iframe.src = vncUrl;
+                }
+              })();
+            </script>
 
             <!-- Controles de movimiento -->
             <div class="mb-3">
@@ -108,10 +151,13 @@
               <label for="presetSelect" class="form-label">Posición preprogramada</label>
               <select id="presetSelect" class="form-select">
                 <option value="" disabled selected>Selecciona una posición…</option>
-                <option value="puerta">Puerta</option>
-                <option value="puerta2">Puerta 2</option>
-                <option value="medio">Mitad de la sala</option>
-                <option value="fondo">Fondo</option>
+                <option value="inicio">Inicio</option>
+                <option value="puerta">Puerta (zona login)</option>
+                <option value="mesa">Mesa de pruebas</option>
+                <option value="vision1">Visión 1</option>
+                <option value="vision2">Visión 2</option>
+                <option value="vision3">Visión 3 / Audición</option>
+                <option value="coordinacion">Zona coordinación / marcha</option>
               </select>
               <div class="form-text">
                 El robot se desplazará al punto seleccionado sobre el mapa <code>map</code>.

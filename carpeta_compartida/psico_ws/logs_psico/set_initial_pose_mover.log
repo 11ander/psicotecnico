@@ -1,0 +1,4 @@
+[rosrun] Couldn't find executable named set_initial_pose.py below /home/robotica_tiago/carpeta_compartida/psico_ws/src/mover_pkg
+[rosrun] Found the following, but they're either not files,
+[rosrun] or not executable:
+[rosrun]   /home/robotica_tiago/carpeta_compartida/psico_ws/src/mover_pkg/src/mover_pkg/set_initial_pose.py

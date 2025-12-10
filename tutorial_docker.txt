@@ -1,9 +1,0 @@
-Craftearlo:
-
-docker compose build
-
-arrancar el servicio:
-
-docker compose up -d
-
-Abrir vscode y attach

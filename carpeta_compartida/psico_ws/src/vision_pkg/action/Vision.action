@@ -1,0 +1,12 @@
+# Goal: ejecutar la coreografía de la prueba de visión
+bool ejecutar
+
+---
+
+# Result: solo indica si la prueba se ha podido ejecutar
+bool ok
+
+---
+
+# Feedback: texto descriptivo de la fase actual (opcional)
+string fase

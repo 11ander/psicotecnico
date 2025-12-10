@@ -1,0 +1,13 @@
+Couldn't find an AF_INET address for [tiago-222c]: Temporary failure in name resolution
+
+Error in XmlRpcClient::doConnect: Could not connect to server (Resource temporarily unavailable).
+Couldn't find an AF_INET address for [tiago-222c]: Temporary failure in name resolution
+
+Error in XmlRpcClient::doConnect: Could not connect to server (Resource temporarily unavailable).
+[31m[ERROR] [1765410185.030440714]: [registerPublisher] Failed to contact master at [tiago-222c:11311].  Retrying...[0m
+Couldn't find an AF_INET address for [tiago-222c]: Temporary failure in name resolution
+
+Error in XmlRpcClient::doConnect: Could not connect to server (Resource temporarily unavailable).
+Couldn't find an AF_INET address for [tiago-222c]: Temporary failure in name resolution
+
+Error in XmlRpcClient::doConnect: Could not connect to server (Resource temporarily unavailable).

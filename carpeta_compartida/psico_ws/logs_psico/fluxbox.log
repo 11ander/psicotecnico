@@ -1,0 +1,3 @@
+Warning: Failed to open file(/usr/share/fluxbox/nls/C.UTF-8/fluxbox.cat)
+for translation, using default messages.
+Error: Couldn't connect to XServer:2

@@ -1,0 +1,385 @@
+#!/usr/bin/env python3
+import rospy
+from sensor_msgs.msg import JointState
+
+def callback(msg):
+    arm_joints = ['arm_1_joint', 'arm_2_joint', 'arm_3_joint',
+                  'arm_4_joint', 'arm_5_joint', 'arm_6_joint', 'arm_7_joint']
+    positions = {}
+    for name, pos in zip(msg.name, msg.position):
+        if name in arm_joints:
+            positions[name] = pos
+    # Mostrar en orden
+    if len(positions) == 7:
+        print("Posición actual del brazo (radianes):")
+        for j in arm_joints:
+            print(f"  {j}: {positions[j]:.3f}")
+        rospy.signal_shutdown("Posición obtenida")
+
+def main():
+    rospy.init_node('get_arm_position', anonymous=True)
+    rospy.Subscriber('/joint_states', JointState, callback)
+    rospy.spin()
+#!/usr/bin/env python3
+import rospy
+from sensor_msgs.msg import JointState
+
+# Articulaciones del brazo
+ARM_JOINTS = [
+    'arm_1_joint', 'arm_2_joint', 'arm_3_joint',
+    'arm_4_joint', 'arm_5_joint', 'arm_6_joint', 'arm_7_joint'
+]
+
+# Articulación del gripper
+GRIPPER_JOINT = 'gripper_left_finger_joint'
+
+def callback(msg):
+    positions = {}
+    for name, pos in zip(msg.name, msg.position):
+        if name in ARM_JOINTS or name == GRIPPER_JOINT:
+            positions[name] = pos
+
+    # Verificar que tenemos al menos el gripper y las articulaciones del brazo
+    brazo_ok = all(j in positions for j in ARM_JOINTS)
+    gripper_ok = GRIPPER_JOINT in positions
+
+    if brazo_ok:
+        print("\n🟢 Posición actual del BRAZO (radianes):")
+        for j in ARM_JOINTS:
+            print(f"  {j}: {positions[j]:.3f}")
+    else:
+        print("\n⚠️  No se recibieron todas las articulaciones del brazo.")
+
+    if gripper_ok:
+        gripper_pos = positions[GRIPPER_JOINT]
+        estado = "	cerrado" if gripper_pos < 0.05 else "	abierto"
+        print(f"\n🟢 Posición del GRIPPER: {gripper_pos:.3f} rad → {estado}")
+    else:
+        print(f"\n⚠️  No se encontró la articulación '{GRIPPER_JOINT}'.")
+
+    # Finalizar el nodo después de imprimir (como en tu versión original)
+    rospy.signal_shutdown("Posición obtenida")
+
+def main():
+    rospy.init_node('ver_posicion_brazo_gripper', anonymous=True)
+    rospy.Subscriber('/joint_states', JointState, callback)
+    rospy.spin()
+
+if __name__ == '__main__':
+    main()
+if __name__ == '__main__':
+    main()
+
+    #!/usr/bin/env python3
+import rospy
+import actionlib
+from vision_pkg.msg import VisionAction, VisionResult, VisionGoal
+from pruebavision import evaluar_vision
+from chekfollow import Follower
+from moverbrazotiago import main
+
+class ServidorVision(object):
+    def __init__(self):
+        self._server = actionlib.SimpleActionServer(
+            'vision',
+            VisionAction,
+            execute_cb=self.execute_cb,
+            auto_start=False
+            
+        )
+        self._server.start()
+        rospy.loginfo("Action server 'vision' listo.")
+
+    def execute_cb(self, goal: VisionGoal):
+        if self._server.is_preempt_requested():
+            rospy.logwarn("Preempt solicitado.")
+            self._server.set_preempted()
+            return
+
+        # Aquí recibimos la cadena del cliente
+        user_string = getattr(goal, 'input_str', "")
+        if not user_string:
+            rospy.logwarn("Cadena vacía recibida. Puntuación = 0.")
+            self._server.set_succeeded(VisionResult(result=0.0))
+            return
+
+        try:
+
+            follower = Follower()
+            main()
+            follower.enviar_puntos([follower.punto_vision2])
+            rospy.sleep(5)
+            follower.enviar_puntos([follower.punto_vision3])
+            rospy.sleep(5)
+            follower.enviar_puntos([follower.punto_mesa])
+            rospy.sleep(5)
+
+            nota = evaluar_vision(user_string)
+            nota = float(nota)
+            
+            rospy.loginfo(f"✅ Evaluación completada. Nota: {nota:.2f}/10")
+            self._server.set_succeeded(VisionResult(result=nota))
+
+        except Exception as e:
+            rospy.logerr("Error en evaluación: %s", e)
+            self._server.set_aborted(VisionResult(result=-1.0))
+
+if __name__ == '__main__':
+    rospy.init_node('servidor_vision')
+    servidor = ServidorVision()
+    rospy.spin()#!/usr/bin/env python3
+import rospy
+from sensor_msgs.msg import JointState
+import actionlib
+from control_msgs.msg import FollowJointTrajectoryAction, FollowJointTrajectoryGoal
+from trajectory_msgs.msg import JointTrajectory, JointTrajectoryPoint
+from std_msgs.msg import Header
+
+# Definir las articulaciones del brazo (orden fijo)
+ARM_JOINTS = [
+    'arm_1_joint', 'arm_2_joint', 'arm_3_joint',
+    'arm_4_joint', 'arm_5_joint', 'arm_6_joint', 'arm_7_joint'
+]
+
+def cerrar_gripper():
+    """
+    Cierra el gripper del TIAGo usando /gripper_controller/command.
+    ¡No llama a rospy.init_node()!
+    """
+    pub = rospy.Publisher('/gripper_controller/command', JointTrajectory, queue_size=1)
+    rospy.sleep(0.5)  # Espera para que el publisher se registre
+
+    traj = JointTrajectory()
+    traj.header = Header()
+    traj.header.stamp = rospy.Time.now()
+    traj.joint_names = ["gripper_left_finger_joint"]
+
+    point = JointTrajectoryPoint()
+    point.positions = [0.01]        # 0.0 = cerrado
+    point.velocities = [0.0]       # obligatorio en TIAGo
+    point.time_from_start = rospy.Duration(2.0)
+
+    traj.points = [point]
+    pub.publish(traj)
+    rospy.loginfo("✅ Comando enviado: gripper CERRADO (posición = 0.0)")
+    rospy.sleep(2.5)
+
+def cogerPOSIsactual():
+    """
+    Obtiene la posición actual del brazo desde /joint_states.
+    Devuelve una lista de 7 valores (radianes) o None si falla.
+    """
+    joint_state_msg = rospy.wait_for_message('/joint_states', JointState, timeout=5.0)
+    
+    current = {}
+    for name, pos in zip(joint_state_msg.name, joint_state_msg.position):
+        if name in ARM_JOINTS:
+            current[name] = pos
+
+    try:
+        positions = [current[joint] for joint in ARM_JOINTS]
+        return positions
+    except KeyError as e:
+        rospy.logerr(f"Articulación no encontrada en /joint_states: {e}")
+        return None
+
+def move_arm(target_positions, duration=3.0):
+    """
+    Mueve el brazo a las posiciones dadas.
+    """
+    action_name = '/arm_controller/follow_joint_trajectory'
+    client = actionlib.SimpleActionClient(action_name, FollowJointTrajectoryAction)
+    
+    rospy.loginfo("Esperando al controlador del brazo...")
+    if not client.wait_for_server(rospy.Duration(5.0)):
+        rospy.logerr("❌ Controlador del brazo no disponible.")
+        return False
+
+    jt = JointTrajectory()
+    jt.joint_names = ARM_JOINTS
+
+    p = JointTrajectoryPoint()
+    p.positions = target_positions
+    p.velocities = [0.0] * 7
+    p.time_from_start = rospy.Duration(duration)
+    jt.points = [p]
+
+    goal = FollowJointTrajectoryGoal()
+    goal.trajectory = jt
+    goal.goal_time_tolerance = rospy.Duration(1.0)
+
+    rospy.loginfo("Enviando meta al brazo...")
+    client.send_goal(goal)
+
+    if not client.wait_for_result(rospy.Duration(duration + 3.0)):
+        rospy.logwarn("⚠️ Timeout en movimiento.")
+        return False
+
+    success = client.get_state() == 3
+    if success:
+        rospy.loginfo("✅ Movimiento completado.")
+    else:
+        rospy.logerr("❌ Movimiento fallido.")
+    return success
+
+def main():
+    # ✅ Inicializar el nodo UNA SOLA VEZ
+    rospy.init_node('move_arm_with_feedback', anonymous=True)
+
+    # 1. Leer posición inicial
+    rospy.loginfo("Leyendo posición inicial del brazo...")
+    initial_pos = cogerPOSIsactual()
+    if initial_pos is None:
+        rospy.logerr("No se pudo leer la posición inicial.")
+        return
+
+    rospy.loginfo(f"Posición inicial: {[round(p, 3) for p in initial_pos]}")
+
+    # 2. Definir posición objetivo
+    target_pos = [1.46, 1.02, -0.08, 0.97, 1.53, -1.39, -1.77]  # posición deseada
+    rospy.loginfo(f"Posición objetivo: {[round(p, 3) for p in target_pos]}")
+
+    # 3. Mover el brazo
+    if not move_arm(target_pos, duration=3.0):
+        return
+
+    # 4. Cerrar el gripper
+    rospy.loginfo("Cerrando el gripper...")
+    
+    cerrar_gripper()
+
+    # 5. (Opcional) Leer posición final
+    rospy.loginfo("Leyendo posición final del brazo...")
+    final_pos = cogerPOSIsactual()
+    if final_pos is not None:
+        rospy.loginfo(f"Posición final: {[round(p, 3) for p in final_pos]}")
+        error = [abs(f - t) for f, t in zip(final_pos, target_pos)]
+        rospy.loginfo(f"Error absoluto: {[round(e, 4) for e in error]}")
+
+if __name__ == '__main__':
+    try:
+        main()
+    except rospy.ROSInterruptException:
+        pass
+    except Exception as e:
+        rospy.logerr(f"Error: {e}")#!/usr/bin/env python3
+from moverbrazotiago import main
+import rospy
+import actionlib
+import time
+
+
+def evaluarvision(cadena):
+
+   
+    CARTELDELTIAGO = "qwerty"  # cadena de referencia (8 caracteres)
+
+    print(f"\nℹ️  Cadena de referencia: '{CARTELDELTIAGO}'")
+    print("-" * 50)
+
+    # Leer entrada del usuario
+    puntuacion = 0
+
+    # ✅ Tomar SOLO los primeros 8 caracteres
+    input4carac = cadena[:6]
+
+    # Si tiene menos de 8, puedes decidir qué hacer:
+    if len(input4carac) < 6:
+        
+        # Opción: rellenar con espacios hasta 8
+        input4carac = input4carac.ljust(6, '-')
+
+    print(f"✅ Cadena procesada: '{input4carac}'")
+
+    # Comparar letra por letra
+    print("\n🔍 Comparando letra por letra...")
+    match = True
+    for i, (ref_char, user_char) in enumerate(zip(CARTELDELTIAGO, input4carac)):
+        if ref_char == user_char:
+            puntuacion += 1
+            print(f"  Posición {i}: '{user_char}' ✅")
+        else:
+            print(f"  Posición {i}: esperado '{ref_char}', recibido '{user_char}' ❌")
+            match = False
+     
+    
+    CARTELDELTIAGO = "abcdef"  # cadena de referencia (8 caracteres)
+    input4carac = cadena[6:12]
+
+    # Si tiene menos de 8, puedes decidir qué hacer:
+    if len(input4carac) < 6:
+        
+        # Opción: rellenar con espacios hasta 8
+        input4carac = input4carac.ljust(6, '-')
+
+    print(f"✅ Cadena procesada: '{input4carac}'")
+
+    # Comparar letra por letra
+    print("\n🔍 Comparando letra por letra...")
+    match = True
+    for i, (ref_char, user_char) in enumerate(zip(CARTELDELTIAGO, input4carac)):
+        if ref_char == user_char:
+            puntuacion += 1
+            print(f"  Posición {i}: '{user_char}' ✅")
+        else:
+            print(f"  Posición {i}: esperado '{ref_char}', recibido '{user_char}' ❌")
+            match = False
+    return puntuacion
+      
+    
+   
+if __name__ == '__main__':
+    puntuacion = evaluarvision("qwertyabcdef")
+    print("Puntuacion",puntuacion/12*10)
+    source carpeta_compartida/setup_env.sh 
+source /opt/ros/noetic/setup.bash 
+#!/usr/bin/env python3
+import rospy
+import actionlib
+from vision_pkg.msg import VisionAction, VisionResult, VisionGoal
+from pruebavision import evaluar_vision
+CARTELDELTIAGO = "qwertyui"  # cadena de referencia (8 caracteres)
+
+
+class ServidorVision(object):
+    def __init__(self):
+        self._server = actionlib.SimpleActionServer(
+            'vision',
+            VisionAction,
+            execute_cb=self.execute_cb,
+            auto_start=False
+        )
+        self._server.start()
+        rospy.loginfo("Action server 'vision' listo.")
+
+    def execute_cb(self, goal: VisionGoal):
+        if self._server.is_preempt_requested():
+            rospy.logwarn("Preempt solicitado.")
+            self._server.set_preempted()
+            return
+
+        # Aquí recibimos la cadena del cliente
+        user_string = getattr(goal, 'input_str', "")
+        if not user_string:
+            rospy.logwarn("Cadena vacía recibida. Puntuación = 0.")
+            self._server.set_succeeded(VisionResult(result=0.0))
+            return
+
+        try:
+            rospy.loginfo(f"Recibida cadena: '{user_string}'")
+            puntuacion = evaluar_vision(user_string)
+            rospy.loginfo(f"Puntuación calculada: {puntuacion}/8")
+
+            nota = (puntuacion / 8.0) * 10.0  
+            self._server.set_succeeded(VisionResult(result=nota))
+
+        except Exception as e:
+            rospy.logerr("Error en evaluación: %s", e)
+            self._server.set_aborted(VisionResult(result=-1.0))
+
+if __name__ == '__main__':
+    rospy.init_node('servidor_vision')
+    servidor = ServidorVision()
+    rospy.spin()
+contador = 1 
+contador = contador + contperm

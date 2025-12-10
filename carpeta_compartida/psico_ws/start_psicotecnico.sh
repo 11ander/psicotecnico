@@ -77,6 +77,11 @@ start_launch() {
 
 # === Lanzamos cada componente, de forma secuencial y controlada ===
 
+#Matamos la cabeza
+
+#Hay que poner esto con try except. 
+#rosnode kill /pal_head_manager
+
 # 1) Face recognition
 start_launch \
   "face_recognition_pkg" \

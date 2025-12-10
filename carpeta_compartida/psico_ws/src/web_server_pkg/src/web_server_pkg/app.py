@@ -1,28 +1,60 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import os
 import threading
 from datetime import datetime
 from typing import Dict, Any, Optional
 import sys
 import random
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
-
-from report import build_pdf_bytes
 import io
+import csv
+from pathlib import Path
+
+import unicodedata
+from difflib import SequenceMatcher
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    jsonify,
+    session,
+    redirect,
+    url_for,
+    send_file,
+)
 
 # ==== ROS (ROS1 Noetic) ====
 import rospy
 import actionlib
 from roslib.message import get_message_class
 
-from speak_api import TiagoSpeaker
-from pruebas_client import MemoriaClient, ReflejosClient, AudicionClient, CoordinacionClient
-
-import csv
-from pathlib import Path
-
-from checkpoint_follower_api import Follower as CheckpointFollower
-
+# ==== Import internos del paquete ====
+# Modo 1: como paquete instalado (roslaunch / catkin)
+# Modo 2 (fallback): ejecución directa desde src/web_server_pkg/src/web_server_pkg
+try:
+    from web_server_pkg.report import build_pdf_bytes
+    from web_server_pkg.speak_api import TiagoSpeaker
+    from web_server_pkg.pruebas_client import (
+        MemoriaClient,
+        ReflejosClient,
+        AudicionClient,
+        CoordinacionClient,
+        VisionClient
+    )
+    from web_server_pkg.checkpoint_follower_api import Follower as CheckpointFollower
+except ImportError:
+    from report import build_pdf_bytes
+    from speak_api import TiagoSpeaker
+    from pruebas_client import (
+        MemoriaClient,
+        ReflejosClient,
+        AudicionClient,
+        CoordinacionClient,
+        VisionClient
+    )
+    from checkpoint_follower_api import Follower as CheckpointFollower
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -54,14 +86,26 @@ SESION = {
 REGISTRO = []
 HISTORICO = []
 
+# --- Sincronización especial para Audición P2 ---
+AUDICION_LOCK = threading.Lock()
+AUDICION_EVENT = None      # type: Optional[threading.Event]
+AUDICION_INDEX = None      # type: Optional[int]
+
+# --- Sincronización especial para Visión (input de frases) ---
+VISION_LOCK = threading.Lock()
+VISION_EVENT = None        # type: Optional[threading.Event]
+VISION_INDEX = None        # type: Optional[int]
+
 # === Movilidad / checkpoints TIAGo ===
 PREPROGRAMMED_POINTS = {
-    "puerta":  [1.801448077821011,  -0.7272143308845652,  -0.17600744219629474, 0.9843888359238527],
-    "puerta2": [0.75413808767915,    0.6935195599805307,   0.8738231258256374,  0.48624391489489344],
-    "medio":   [3.6704948592312454, -1.8971807817955268,  -0.34134149988312906, 0.9399393493505502],
-    "fondo":   [6.128891746903331,  -2.156612477116119,  -0.100474241670117,   0.9949396598592374],
+    "inicio":        [1.4998722751648397, -0.7247556435570256,  0.989510915323257,   0.14445812007682451],
+    "puerta":        [-0.03339960212487537, -0.9941108864627621, 0.985343590657674,   0.17058138336243545],
+    "mesa":          [3.672146707374831, -2.2359272006142015,  -0.6552174338382382,  0.7554403446960151],
+    "vision1":       [2.9012330405494886, -1.293344511139235,  -0.4588533251208141,  0.888512029195763],
+    "vision2":       [2.2037956776648566,  0.061978901102042926, -0.5214428312970412, 0.8532862202619502],
+    "vision3":       [1.5780124426358513,  1.4079240508893582, -0.6134467796664745,  0.7897360625657358],
+    "coordinacion":  [6.647815751420979, -2.0986998827950143,   0.9628602192184542,  0.27000036712306563],
 }
-
 _FOLLOWER = None
 _FOLLOWER_LOCK = threading.Lock()
 
@@ -74,8 +118,99 @@ def get_follower() -> CheckpointFollower:
         return _FOLLOWER
 
 
+def mover_robot_a_puerta_inicio():
+    """
+    Intenta mover al TIAGo a la puerta al arrancar el webserver,
+    para que ya esté colocado cuando se haga el login por cara.
+    """
+    follower = get_follower()
+
+    def _worker():
+        import time
+
+        # 1) Elegir coordenadas de la puerta
+        try:
+            if hasattr(follower, "punto_puerta"):
+                coords = follower.punto_puerta
+                registrar(f"Movilidad (inicio): usando follower.punto_puerta = {coords}")
+            else:
+                coords = PREPROGRAMMED_POINTS.get("puerta")
+                registrar(f"Movilidad (inicio): usando PREPROGRAMMED_POINTS['puerta'] = {coords}")
+        except Exception as e:
+            registrar(f"ERROR obteniendo coordenadas de la puerta: {e}")
+            return
+
+        if not coords:
+            registrar("Movilidad (inicio): no hay coordenadas definidas para 'puerta'.")
+            return
+
+        # 2) Intentar mover varias veces
+        for intento in range(3):
+            try:
+                registrar("Movilidad (inicio): yendo a la puerta para el login…")
+                ok = follower.enviar_puntos([coords])
+                if ok:
+                    registrar("Movilidad (inicio): robot colocado en la puerta, listo para el login.")
+                    return
+                else:
+                    registrar(f"Movilidad (inicio): intento {intento+1} fallido al mover a la puerta. Reintentando...")
+                    time.sleep(3.0)
+            except Exception as e:
+                registrar(f"ERROR moviendo el robot a la puerta al inicio: {e}")
+                time.sleep(3.0)
+
+        registrar("Movilidad (inicio): no se pudo colocar al robot en la puerta tras varios intentos.")
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 
+def mover_robot_a_mesa_despues_login(nombre_paciente: str):
+    """
+    Tras un login correcto, mueve al robot a la mesa y le pide al paciente
+    que se siente.
+    """
+    follower = get_follower()
+
+    def _worker():
+        import time
+
+        # 1) Elegir coordenadas de la mesa
+        try:
+            if hasattr(follower, "punto_mesa"):
+                coords = follower.punto_mesa
+                registrar(f"Movilidad (login): usando follower.punto_mesa = {coords}")
+            else:
+                coords = PREPROGRAMMED_POINTS.get("medio")
+                registrar(f"Movilidad (login): usando PREPROGRAMMED_POINTS['medio'] = {coords}")
+        except Exception as e:
+            registrar(f"ERROR obteniendo coordenadas de mesa tras login: {e}")
+            return
+
+        if not coords:
+            registrar("Movilidad (login): no hay coordenadas definidas para la mesa.")
+            return
+
+        # 2) Intentar mover varias veces
+        for intento in range(2):
+            try:
+                registrar("Movilidad (login): yendo a la mesa para comenzar las pruebas…")
+                ok = follower.enviar_puntos([coords])
+                if ok:
+                    registrar("Movilidad (login): robot colocado en la mesa.")
+                    # Pequeña pausa y mensaje al paciente
+                    time.sleep(1.0)
+                    speak_async("Puedes sentarte aquí, por favor.", lang_id="es_ES")
+                    return
+                else:
+                    registrar(f"Movilidad (login): intento {intento+1} fallido al mover a la mesa. Reintentando...")
+                    time.sleep(2.0)
+            except Exception as e:
+                registrar(f"ERROR moviendo el robot a la mesa tras login: {e}")
+                time.sleep(2.0)
+
+        registrar("Movilidad (login): no se pudo colocar al robot en la mesa tras varios intentos.")
+
+    threading.Thread(target=_worker, daemon=True).start()
 
 
 
@@ -164,6 +299,7 @@ def save_session_csv(sesion: Dict[str, Any], csv_path: Path = HISTORY_CSV):
         "audicion_p1": None,
         "audicion_p2": None,
         "coordinacion": None,
+        "vision": None,
     }
 
     for p in (sesion.get("pruebas") or []):
@@ -179,6 +315,8 @@ def save_session_csv(sesion: Dict[str, Any], csv_path: Path = HISTORY_CSV):
             notas["audicion_p2"] = d.get("nota_p2")
         elif pk == "coordinacion":
             notas["coordinacion"] = p.get("puntuacion")
+        elif pk == "vision":                                  
+            notas["vision"] = p.get("puntuacion")
 
     row = {
         "fecha": sesion.get("fecha", ""),
@@ -190,6 +328,7 @@ def save_session_csv(sesion: Dict[str, Any], csv_path: Path = HISTORY_CSV):
         "audicion_p1": notas["audicion_p1"],
         "audicion_p2": notas["audicion_p2"],
         "coordinacion": notas["coordinacion"],
+        "vision": notas["vision"],
     }
 
 
@@ -234,6 +373,34 @@ def _seed_fake_session(nombre: str = "Prueba"):
         "current": "",
     })
 
+# ------------------- Helpers Vision (normalizar texto a puntucacion) -------------------
+def _normalize_text_for_score(s: str) -> str:
+    s = (s or "").strip()
+    s = unicodedata.normalize("NFKD", s)
+    # eliminar acentos
+    s = "".join(ch for ch in s if not unicodedata.combining(ch))
+    # minúsculas, solo letras/números/espacios
+    s = "".join(ch.lower() if (ch.isalnum() or ch.isspace()) else " " for ch in s)
+    # colapsar espacios
+    return " ".join(s.split())
+
+def _similarity_0_1(ref: str, usr: str) -> float:
+    a = _normalize_text_for_score(ref)
+    b = _normalize_text_for_score(usr)
+    if not a and not b:
+        return 1.0
+    if a and not b:
+        return 0.0
+    return SequenceMatcher(None, a, b).ratio()
+
+def _score_vision_phrase_0_10(ref: str, usr: str) -> float:
+    ratio = _similarity_0_1(ref, usr)
+    score = 10.0 * ratio
+    if score < 0.0: score = 0.0
+    if score > 10.0: score = 10.0
+    return score
+
+
 
 # ------------------- Helpers speaker / nombres -------------------
 TEST_DISPLAY = {
@@ -241,6 +408,40 @@ TEST_DISPLAY = {
     "reflejos": "Reflejos",
     "audicion": "Audición",
     "coordinacion": "Coordinación / Movilidad",
+    "vision": "Visión",
+}
+
+
+TEST_INTROS = {
+    "memoria": (
+        "En esta prueba de memoria voy a encender una secuencia de luces en los pulsadores. "
+        "Cuando termine, tendrás que repetir la misma secuencia pulsando los botones en el mismo orden. "
+        "Cada vez que lo hagas bien, la secuencia será un poco más larga."
+    ),
+    "reflejos": (
+        "En esta prueba de reflejos se encenderá un único pulsador con una luz. "
+        "Tu tarea es pulsar lo más rápido posible el botón que se encienda. "
+        "La luz irá cambiando de sitio de forma aleatoria y, según avances de nivel, se encenderá cada vez más rápido."
+    ),
+    "audicion": (
+        "En la prueba de audición vamos a hacer dos partes. "
+        "En la primera parte, cada vez que escuches un bip deberás pulsar el botón número seis del cuadro de mandos, "
+        "que está señalado. Pulsa siempre que escuches el sonido. "
+        "En la segunda parte escucharás varios bip seguidos, tendrás que contarlos mentalmente "
+        "y al final escribir el número total en la casilla que verás en la pantalla."
+    ),
+    "coordinacion": (
+        "En la prueba de coordinación y marcha te pediré que te levantes de la silla. "
+        "Me colocaré en la zona más alejada de la sala y necesitaré que camines hacia adelante y hacia atrás, "
+        "intentando ir lo más recto posible. "
+        "Voy a analizar tu forma de andar, la estabilidad del tronco y la simetría de la marcha. "
+        "Esta prueba es orientativa y no sustituye a una valoración médica."
+    ),
+    "vision": (
+        "En la prueba de visión te enseñaré primero una frase escrita en un cuaderno. "
+        "Deberás leerla y recordarla. Después me alejaré y te enseñaré otra frase en la parte de atrás del cuaderno. "
+        "Cuando terminemos, tendrás que escribir en la pantalla las dos frases que recuerdas."
+    ),
 }
 
 def ordinal_es_femenino(n: int) -> str:
@@ -282,6 +483,9 @@ def api_login():
         if NO_TEST and not HISTORICO:
             _seed_fake_session(nombre="Prueba")
 
+        # ⬇️ Nuevo: después del saludo, ir a la mesa y decir que se siente
+        mover_robot_a_mesa_despues_login("Prueba")
+
         return jsonify(ok=True, user="Prueba")
 
     try:
@@ -297,9 +501,16 @@ def api_login():
         session["user"] = nombre
         SESION["paciente"]["nombre"] = nombre
         speak_async(f"Bienvenido {nombre} a la consulta, pase por aquí", lang_id="es_ES")
+
+        # ⬇️ Nuevo: mover a la mesa y hablar al llegar
+        mover_robot_a_mesa_despues_login(nombre)
+
         return jsonify(ok=True, user=nombre)
     except Exception as e:
         return jsonify(ok=False, error=str(e))
+
+
+
 
 @app.route("/logout")
 def logout():
@@ -337,19 +548,11 @@ def iniciar_pruebas():
     def worker():
         follower = get_follower()
 
-        # 1) OPCIONAL: mover al punto de inicio antes de empezar las pruebas
-        try:
-            if hasattr(follower, "punto_inicio"):
-                registrar("Movilidad automática: yendo al punto de inicio…")
-                follower.enviar_puntos([follower.punto_puerta])
-        except Exception as e:
-            registrar(f"ERROR moviendo al punto de inicio: {e}")
-            
         for idx, id_prueba in enumerate(secuencia_pruebas, start=1):
             SESION["current"] = id_prueba
             nombre_legible = TEST_DISPLAY.get(id_prueba, id_prueba.capitalize())
             orden_txt = ordinal_es_femenino(idx)
-            
+
             # Elegir a qué punto ir según la prueba
             coords = None
             try:
@@ -363,7 +566,7 @@ def iniciar_pruebas():
                     coords = follower.punto_vision3
 
                 elif id_prueba == "coordinacion" and hasattr(follower, "punto_vision3"):
-                    coords = follower.punto_vision3
+                    coords = follower.punto_coordinacion
 
                 # Si hay coordenada, mover el robot
                 if coords is not None:
@@ -376,7 +579,13 @@ def iniciar_pruebas():
             except Exception as e:
                 registrar(f"ERROR moviendo el robot antes de la prueba {nombre_legible}: {e}")
 
+            # Anuncio por voz
             speak_async(f"Vamos a realizar la {orden_txt} prueba, que es: {nombre_legible}", lang_id="es_ES")
+
+            # 👉 Nueva explicación corta de la prueba
+            intro = TEST_INTROS.get(id_prueba)
+            if intro:
+                speak_async(intro, lang_id="es_ES")
 
             # Ejecutar la prueba
             if id_prueba == "memoria":
@@ -400,6 +609,16 @@ def iniciar_pruebas():
                 payload = {
                     "prueba": id_prueba,
                     "puntuacion": None,  # se completa tras input P2
+                    "hora": datetime.now().strftime("%H:%M:%S"),
+                    "detalles": det or {},
+                }
+
+
+            elif id_prueba == "vision":     
+                det = VisionClient.run()
+                payload = {
+                    "prueba": id_prueba,
+                    "puntuacion": None,  # se completa tras input del examinador
                     "hora": datetime.now().strftime("%H:%M:%S"),
                     "detalles": det or {},
                 }
@@ -436,9 +655,42 @@ def iniciar_pruebas():
                     "hora": datetime.now().strftime("%H:%M:%S")
                 }
 
-
-            SESION["pruebas_completadas"].append(id_prueba)
+            # Guardamos el resultado en la lista (para que aparezca en el panel y se pueda rellenar P2)
+            idx_resultado = len(SESION["resultados"])
             SESION["resultados"].append(payload)
+
+            # --- Lógica especial para pruebas que requieren input desde el front ---
+            detalles = (payload.get("detalles") or {})
+
+            if id_prueba == "audicion" and detalles.get("requiere_input"):
+                global AUDICION_EVENT, AUDICION_INDEX
+
+                with AUDICION_LOCK:
+                    AUDICION_EVENT = threading.Event()
+                    AUDICION_INDEX = idx_resultado
+
+                registrar("Esperando a que el examinador introduzca la respuesta de Audición (P2) en la web…")
+                AUDICION_EVENT.wait()
+                registrar("Respuesta de Audición P2 recibida. Continuando con la siguiente prueba.")
+
+                SESION["pruebas_completadas"].append(id_prueba)
+
+            elif id_prueba == "vision" and detalles.get("requiere_input"):   # ⬅️ NUEVO
+                global VISION_EVENT, VISION_INDEX
+
+                with VISION_LOCK:
+                    VISION_EVENT = threading.Event()
+                    VISION_INDEX = idx_resultado
+
+                registrar("Esperando a que el examinador introduzca las frases de la prueba de Visión en la web…")
+                VISION_EVENT.wait()
+                registrar("Respuesta de Visión recibida. Continuando con la siguiente prueba.")
+
+                SESION["pruebas_completadas"].append(id_prueba)
+
+            else:
+                SESION["pruebas_completadas"].append(id_prueba)
+
 
         # ---- FINAL DE SECUENCIA ----
         SESION["current"] = ""
@@ -454,13 +706,14 @@ def iniciar_pruebas():
 
         # >>> Guardar la sesión PRIVADA en CSV (solo notas)
         try:
-            save_session_csv(sesion)   # <-- AQUÍ es el punto 2.3
+            save_session_csv(sesion)
         except Exception as e:
             registrar(f"ERROR guardando CSV: {e}")
 
-
     threading.Thread(target=worker, daemon=True).start()
     return jsonify(ok=True)
+
+
 
 @app.route("/status")
 def obtener_estado():
@@ -513,11 +766,50 @@ def responder_resultado():
                 item["puntuacion"] = det.get("nota_p2", None)
 
             item["detalles"] = det
+        
+        elif item.get("prueba") == "vision":
+            det = item.get("detalles", {}) or {}
+
+            ref1 = (det.get("frase_1") or "").strip()
+            ref2 = (det.get("frase_2") or "").strip()
+            usr1 = (values.get("vision_frase_1") or "").strip()
+            usr2 = (values.get("vision_frase_2") or "").strip()
+
+            nota_f1 = round(_score_vision_phrase_0_10(ref1, usr1), 2)
+            nota_f2 = round(_score_vision_phrase_0_10(ref2, usr2), 2)
+            nota_final = round((nota_f1 + nota_f2) / 2.0, 2)
+
+            det["frase_1_usuario"] = usr1
+            det["frase_2_usuario"] = usr2
+            det["nota_f1"] = float(nota_f1)
+            det["nota_f2"] = float(nota_f2)
+
+            item["puntuacion"] = float(nota_final)
+            item["detalles"] = det
+
 
     except Exception as e:
-        registrar(f"ERROR calculando notas de audición: {e}")
+        registrar(f"ERROR calculando notas de audición/visión: {e}")
+
+
+    # Si estábamos bloqueados esperando esta respuesta (Audición P2), despertamos el hilo
+    global AUDICION_EVENT, AUDICION_INDEX
+    with AUDICION_LOCK:
+        if AUDICION_EVENT is not None and idx == AUDICION_INDEX:
+            AUDICION_EVENT.set()
+            AUDICION_EVENT = None
+            AUDICION_INDEX = None
+
+    global VISION_EVENT, VISION_INDEX
+    with VISION_LOCK:
+        if VISION_EVENT is not None and idx == VISION_INDEX:
+            VISION_EVENT.set()
+            VISION_EVENT = None
+            VISION_INDEX = None
+
 
     return jsonify(ok=True)
+
 
 
 
@@ -611,14 +903,31 @@ def admin_move():
     if modo not in ("preset", "coords"):
         return jsonify(ok=False, error="Modo inválido"), 400
 
+    # Conectamos ya con el follower (lo reutilizamos abajo)
+    follower = get_follower()
+
     # Construimos la lista de puntos a enviar [[x, y, oz, ow]]
     puntos = []
 
     if modo == "preset":
         key = (datos.get("preset") or "").lower()
-        coords = PREPROGRAMMED_POINTS.get(key)
+        if not key:
+            return jsonify(ok=False, error="Posición preprogramada no indicada"), 400
+
+        # 1) Intentar usar atributo del Follower: punto_inicio, punto_puerta, etc.
+        attr_name = f"punto_{key}"
+        coords = None
+        if hasattr(follower, attr_name):
+            coords = getattr(follower, attr_name)
+            registrar(f"Movilidad admin: usando follower.{attr_name} = {coords}")
+        else:
+            # 2) Fallback al diccionario PREPROGRAMMED_POINTS
+            coords = PREPROGRAMMED_POINTS.get(key)
+            registrar(f"Movilidad admin: usando PREPROGRAMMED_POINTS['{key}'] = {coords}")
+
         if not coords:
-            return jsonify(ok=False, error="Posición preprogramada desconocida"), 400
+            return jsonify(ok=False, error=f"Posición preprogramada desconocida: {key}"), 400
+
         puntos.append(coords)
         desc = f"preprogramada '{key}'"
 
@@ -634,8 +943,6 @@ def admin_move():
 
         puntos.append([x, y, oz, ow])
         desc = f"manual [{x:.3f}, {y:.3f}, {oz:.3f}, {ow:.3f}]"
-
-    follower = get_follower()
 
     def worker():
         try:
@@ -653,10 +960,11 @@ def admin_move():
     return jsonify(ok=True, message=f"Movimiento {desc} enviado al robot.")
 
 
-
 # ------------------- Main -------------------
 if __name__ == "__main__":
     # Flags útiles:
     #   python3 app.py --no-login
     #   python3 app.py --no-login --mute --no-test
+
+    mover_robot_a_puerta_inicio()
     app.run(host="0.0.0.0", port=5000, debug=True, use_reloader=False)

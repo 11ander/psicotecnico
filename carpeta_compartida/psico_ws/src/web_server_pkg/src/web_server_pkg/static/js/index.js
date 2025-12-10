@@ -27,7 +27,8 @@
     memoria: "Memoria",
     reflejos: "Reflejos",
     audicion: "Audición",
-    coordinacion: "Coordinación"
+    coordinacion: "Coordinación",
+    vision: "Visión"
   };
 
   function labelOf(k){ return LABELS[k] || (k ? (k[0].toUpperCase()+k.slice(1)) : ''); }
@@ -207,11 +208,12 @@
   function renderResults(resultados){
     if (!resultsList) return;
 
-    // Guardar valores temporales de inputs Audición si estaban siendo escritos
+    // Guardar valores temporales de inputs Audición/Vision(creo que tambien loc coge) si estaban siendo escritos
     const prevInputs = {};
-    resultsList.querySelectorAll('input[data-audicion-input="1"]').forEach(inp => {
+    resultsList.querySelectorAll('input[data-test-input="1"]').forEach(inp => {
       prevInputs[inp.id] = inp.value;
     });
+
 
     resultsList.innerHTML = "";
 
@@ -255,7 +257,7 @@
                 <input
                   type="${campo.type || 'number'}"
                   id="${inputId}"
-                  data-audicion-input="1"
+                  data-test-input="1" 
                   class="form-control"
                   min="${campo.min ?? 0}"
                   inputmode="numeric"
@@ -289,6 +291,98 @@
         }
       }
 
+
+        if (r.prueba === 'vision') {
+        const d = r.detalles || {};
+        const notaF1 = (d.nota_f1 !== undefined) ? d.nota_f1 : '—';
+        const notaF2 = (d.nota_f2 !== undefined) ? d.nota_f2 : '—';
+
+        html += `
+          <div class="mt-1 text-muted">
+            Nota frase 1: <b>${notaF1}</b> /10 · Nota frase 2: <b>${notaF2}</b> /10
+          </div>
+        `;
+
+        const yaRespondido = !!(r.respuesta_usuario);
+        const necesita = d.requiere_input && !yaRespondido;
+
+        if (necesita) {
+          const schema = d.input_schema || {};
+          const campos = schema.campos || [];
+          const campo1 = campos[0] || {name:"vision_frase_1",label:"Frase 1", type:"text"};
+          const campo2 = campos[1] || {name:"vision_frase_2",label:"Frase 2", type:"text"};
+
+          const inputId1 = `vision_${idx}_${campo1.name}`;
+          const inputId2 = `vision_${idx}_${campo2.name}`;
+
+          html += `
+            <div class="mt-2 p-2 border rounded-3">
+              <div class="fw-semibold mb-1">${schema.titulo || 'Visión – Respuesta del paciente'}</div>
+              <div class="text-muted mb-2">${schema.descripcion || ''}</div>
+
+              <div class="mb-2" style="max-width:260px;">
+                <label class="form-label">${campo1.label || 'Frase 1 recordada'}</label>
+                <input
+                  type="${campo1.type || 'text'}"
+                  id="${inputId1}"
+                  data-test-input="1"
+                  class="form-control"
+                />
+              </div>
+
+              <div class="mb-2" style="max-width:260px;">
+                <label class="form-label">${campo2.label || 'Frase 2 recordada'}</label>
+                <input
+                  type="${campo2.type || 'text'}"
+                  id="${inputId2}"
+                  data-test-input="1"
+                  class="form-control"
+                />
+              </div>
+
+              <button class="btn btn-sm btn-primary"
+                      onclick="enviarRespuestaVision(${idx}, '${campo1.name}', '${inputId1}', '${campo2.name}', '${inputId2}')">
+                Guardar
+              </button>
+            </div>
+          `;
+
+          li.innerHTML = html;
+          resultsList.appendChild(li);
+
+          const i1 = document.getElementById(inputId1);
+          const i2 = document.getElementById(inputId2);
+          if (i1 && prevInputs[inputId1] !== undefined) i1.value = prevInputs[inputId1];
+          if (i2 && prevInputs[inputId2] !== undefined) i2.value = prevInputs[inputId2];
+
+          // Enter en cualquiera de los dos dispara el envío
+          [i1, i2].forEach(inp => {
+            if (!inp) return;
+            inp.addEventListener('keydown', ev => {
+              if (ev.key === 'Enter') {
+                enviarRespuestaVision(idx, campo1.name, inputId1, campo2.name, inputId2);
+              }
+            });
+          });
+
+          return;
+        } else if (yaRespondido) {
+          const v = r.respuesta_usuario || {};
+          const f1 = v.vision_frase_1 || '';
+          const f2 = v.vision_frase_2 || '';
+          html += `
+            <div class="mt-1">
+              ✅ Respuesta guardada:
+              <div class="small"><b>Frase 1:</b> ${f1}</div>
+              <div class="small"><b>Frase 2:</b> ${f2}</div>
+            </div>
+          `;
+        }
+      }
+
+
+
+
       li.innerHTML = html;
       resultsList.appendChild(li);
     });
@@ -311,6 +405,35 @@
 
     setTimeout(pollTick, 200);
   };
+
+
+  window.enviarRespuestaVision = async function (index, fieldName1, inputId1, fieldName2, inputId2){
+    const el1 = document.getElementById(inputId1);
+    const el2 = document.getElementById(inputId2);
+    if (!el1 || !el2) return alert("No se encuentran los campos de texto.");
+
+    const v1 = (el1.value || '').trim();
+    const v2 = (el2.value || '').trim();
+
+    if (!v1 || !v2) {
+      return alert("Rellena las dos frases, por favor.");
+    }
+
+    await fetch("/answer", {
+      method:"POST",
+      headers: {"Content-Type":"application/json"},
+      body: JSON.stringify({
+        index,
+        values: {
+          [fieldName1]: v1,
+          [fieldName2]: v2
+        }
+      })
+    });
+
+    setTimeout(pollTick, 200);
+  };
+
 
   // ---------- PDF ----------
   async function downloadPDF(){

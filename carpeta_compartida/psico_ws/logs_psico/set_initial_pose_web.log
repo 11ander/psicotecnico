@@ -1,0 +1,32 @@
+Traceback (most recent call last):
+  File "/home/robotica_tiago/carpeta_compartida/psico_ws/devel/lib/web_server_pkg/set_initial_pose.py", line 15, in <module>
+    exec(compile(fh.read(), python_script, 'exec'), context)
+  File "/home/robotica_tiago/carpeta_compartida/psico_ws/src/web_server_pkg/src/web_server_pkg/set_initial_pose.py", line 3, in <module>
+    import rospy
+  File "/opt/ros/noetic/lib/python3/dist-packages/rospy/__init__.py", line 47, in <module>
+    from std_msgs.msg import Header
+  File "/opt/ros/noetic/lib/python3/dist-packages/std_msgs/msg/__init__.py", line 1, in <module>
+    from ._Bool import *
+  File "/opt/ros/noetic/lib/python3/dist-packages/std_msgs/msg/_Bool.py", line 6, in <module>
+    import genpy
+  File "/opt/ros/noetic/lib/python3/dist-packages/genpy/__init__.py", line 34, in <module>
+    from . message import Message, SerializationError, DeserializationError, MessageException, struct_I
+  File "/opt/ros/noetic/lib/python3/dist-packages/genpy/message.py", line 64, in <module>
+    import numpy as np
+  File "/home/robotica_tiago/.local/lib/python3.8/site-packages/numpy/__init__.py", line 263, in <module>
+    warnings.filterwarnings("ignore", message="numpy.dtype size changed")
+  File "/usr/lib/python3.8/warnings.py", line 155, in filterwarnings
+    message = re.compile(message, re.I)
+  File "/usr/lib/python3.8/re.py", line 252, in compile
+    return _compile(pattern, flags)
+  File "/usr/lib/python3.8/re.py", line 304, in _compile
+    p = sre_compile.compile(pattern, flags)
+  File "/usr/lib/python3.8/sre_compile.py", line 764, in compile
+    p = sre_parse.parse(p, flags)
+  File "/usr/lib/python3.8/sre_parse.py", line 948, in parse
+    p = _parse_sub(source, state, flags & SRE_FLAG_VERBOSE, 0)
+  File "/usr/lib/python3.8/sre_parse.py", line 443, in _parse_sub
+    itemsappend(_parse(source, state, verbose, nested + 1,
+  File "/usr/lib/python3.8/sre_parse.py", line 529, in _parse
+    subpatternappend((LITERAL, _ord(this)))
+KeyboardInterrupt
