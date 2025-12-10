@@ -27,7 +27,7 @@ class MemoriaClient(_BaseClient):
     ACTION_NAME = "memoria"
 
     @classmethod
-    def run(cls, wait_server_timeout: float = 5.0, result_timeout: float = 60.0) -> float:
+    def run(cls, wait_server_timeout: float = 5.0, result_timeout: float = 300.0) -> float:
         cls._ensure_node("web_memoria_client")
         client = actionlib.SimpleActionClient(cls.ACTION_NAME, MemoriaAction)
         if not client.wait_for_server(rospy.Duration(wait_server_timeout)):
@@ -43,7 +43,7 @@ class ReflejosClient(_BaseClient):
     ACTION_NAME = "reflejos"
 
     @classmethod
-    def run(cls, wait_server_timeout: float = 5.0, result_timeout: float = 60.0) -> float:
+    def run(cls, wait_server_timeout: float = 5.0, result_timeout: float = 300.0) -> float:
         cls._ensure_node("web_reflejos_client")
         client = actionlib.SimpleActionClient(cls.ACTION_NAME, ReflejosAction)
         if not client.wait_for_server(rospy.Duration(wait_server_timeout)):
@@ -59,7 +59,7 @@ class AudicionClient(_BaseClient):
     ACTION_NAME = "audicion_action"
 
     @classmethod
-    def run(cls, wait_server_timeout: float = 5.0, result_timeout: float = 180.0) -> Optional[Dict[str, Any]]:
+    def run(cls, wait_server_timeout: float = 5.0, result_timeout: float = 300.0) -> Optional[Dict[str, Any]]:
         """
         Devuelve un diccionario con:
           - pulsador_emitidos, pulsador_aciertos, pulsador_fallos, nota_p1

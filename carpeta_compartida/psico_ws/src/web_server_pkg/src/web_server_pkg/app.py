@@ -335,10 +335,46 @@ def iniciar_pruebas():
     })
 
     def worker():
+        follower = get_follower()
+
+        # 1) OPCIONAL: mover al punto de inicio antes de empezar las pruebas
+        try:
+            if hasattr(follower, "punto_inicio"):
+                registrar("Movilidad automática: yendo al punto de inicio…")
+                follower.enviar_puntos([follower.punto_puerta])
+        except Exception as e:
+            registrar(f"ERROR moviendo al punto de inicio: {e}")
+            
         for idx, id_prueba in enumerate(secuencia_pruebas, start=1):
             SESION["current"] = id_prueba
             nombre_legible = TEST_DISPLAY.get(id_prueba, id_prueba.capitalize())
             orden_txt = ordinal_es_femenino(idx)
+            
+            # Elegir a qué punto ir según la prueba
+            coords = None
+            try:
+                if id_prueba == "memoria" and hasattr(follower, "punto_mesa"):
+                    coords = follower.punto_mesa
+
+                elif id_prueba == "reflejos" and hasattr(follower, "punto_mesa"):
+                    coords = follower.punto_mesa
+
+                elif id_prueba == "audicion" and hasattr(follower, "punto_vision3"):
+                    coords = follower.punto_vision3
+
+                elif id_prueba == "coordinacion" and hasattr(follower, "punto_vision3"):
+                    coords = follower.punto_vision3
+
+                # Si hay coordenada, mover el robot
+                if coords is not None:
+                    registrar(f"Movilidad automática: yendo a posición para la prueba {nombre_legible}…")
+                    ok = follower.enviar_puntos([coords])
+                    if not ok:
+                        registrar("Advertencia: movimiento no confirmado por Follower.")
+                    else:
+                        registrar("Movilidad automática: movimiento completado.")
+            except Exception as e:
+                registrar(f"ERROR moviendo el robot antes de la prueba {nombre_legible}: {e}")
 
             speak_async(f"Vamos a realizar la {orden_txt} prueba, que es: {nombre_legible}", lang_id="es_ES")
 
@@ -452,7 +488,7 @@ def responder_resultado():
         item = SESION["resultados"][idx]
     except Exception:
         return jsonify(ok=False, error="índice fuera de rango"), 404
-
+    
     item["respuesta_usuario"] = values
     try:
         if item.get("prueba") == "audicion":

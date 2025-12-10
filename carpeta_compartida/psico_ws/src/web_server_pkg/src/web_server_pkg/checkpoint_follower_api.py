@@ -21,6 +21,14 @@ class Follower:
     """
 
     def __init__(self) -> None:
+        # Declarar puntos
+        self.punto_inicio = [1.4998722751648397, -0.7247556435570256, 0.989510915323257, 0.14445812007682451]
+        self.punto_puerta = [-0.03339960212487537, -0.9941108864627621, 0.985343590657674, 0.17058138336243545]
+        self.punto_mesa = [3.672146707374831, -2.2359272006142015, -0.6552174338382382, 0.7554403446960151]
+        self.punto_vision1 = [2.9012330405494886, -1.293344511139235, -0.4588533251208141, 0.888512029195763]
+        self.punto_vision2 = [2.2037956776648566, 0.061978901102042926, -0.5214428312970412, 0.8532862202619502]
+        self.punto_vision3 = [1.5780124426358513, 1.4079240508893582, -0.6134467796664745, 0.7897360625657358]
+        
         # Proteger init_node para no re-inicializar ROS si ya está activo
         if not rospy.core.is_initialized():
             rospy.init_node("checkpoint_action_client", anonymous=True)
@@ -173,11 +181,11 @@ class Follower:
 
 
 if __name__ == "__main__":
-    checkpoints = [
-        [1.801448077821011,  -0.7272143308845652,  -0.17600744219629474, 0.9843888359238527], #puerta
-        [0.75413808767915,    0.6935195599805307,   0.8738231258256374,  0.48624391489489344], #puerta2
-        [3.6704948592312454, -1.8971807817955268,  -0.34134149988312906, 0.9399393493505502], #AlMedio
-        [6.128891746903331,  -2.156612477116119,  -0.100474241670117,   0.9949396598592374], #Alfondo
-    ]
     follower = Follower()
+    checkpoints = [
+        follower.punto_mesa,
+        follower.punto_vision1,
+        follower.punto_vision2,
+        follower.punto_vision3
+    ]
     follower.enviar_puntos(checkpoints)
