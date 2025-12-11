@@ -203,5 +203,6 @@ include_directories(
 
 catkin_install_python(PROGRAMS
   src/mover_pkg/checkpoint_follower.py
+  src/mover_pkg/set_initial_pose.py
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

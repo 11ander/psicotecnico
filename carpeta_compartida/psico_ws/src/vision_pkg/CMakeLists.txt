@@ -29,5 +29,6 @@ catkin_install_python(
     src/vision_pkg/servidor_vision.py
     src/vision_pkg/test_vision_client.py
     src/vision_pkg/checkpoint_follower_api.py
+    src/vision_pkg/coger_papel.py      
   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 )

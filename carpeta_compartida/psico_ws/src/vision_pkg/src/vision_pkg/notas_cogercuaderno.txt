@@ -1,0 +1,352 @@
+posicion buena de todo:
+
+base: 
+
+
+^C^Crobotica_tiago@cab-Prestige-16-AI-Studio-B1VFG:~/carpeta_compartida/psico_ws$ rosrun tf tf_echo map base_link
+At time 1765453140.211
+- Translation: [1.827, 0.533, 0.099]
+- Rotation: in Quaternion [0.000, 0.000, -0.223, 0.975]
+            in RPY (radian) [0.000, -0.000, -0.450]
+            in RPY (degree) [0.000, -0.000, -25.779]
+At time 1765453140.602
+- Translation: [1.827, 0.533, 0.099]
+- Rotation: in Quaternion [0.000, 0.000, -0.223, 0.975]
+            in RPY (radian) [0.000, -0.000, -0.450]
+            in RPY (degree) [0.000, -0.000, -25.779]
+At time 1765453141.605
+- Translation: [1.827, 0.533, 0.099]
+- Rotation: in Quaternion [0.000, 0.000, -0.223, 0.975]
+            in RPY (radian) [0.000, -0.000, -0.450]
+            in RPY (degree) [0.000, -0.000, -25.779]
+^C^C^Crobotica_tiago@cab-P
+
+brazo:
+
+---
+header: 
+  seq: 130639
+  stamp: 
+    secs: 1765453169
+    nsecs: 780326402
+  frame_id: ''
+name: 
+  - arm_1_joint
+  - arm_2_joint
+  - arm_3_joint
+  - arm_4_joint
+  - arm_5_joint
+  - arm_6_joint
+  - arm_7_joint
+  - gripper_left_finger_joint
+  - gripper_right_finger_joint
+  - head_1_joint
+  - head_2_joint
+  - torso_lift_joint
+  - wheel_left_joint
+  - wheel_right_joint
+  - caster_back_left_1_joint
+  - caster_back_left_2_joint
+  - caster_front_left_1_joint
+  - caster_front_left_2_joint
+  - caster_back_right_1_joint
+  - caster_back_right_2_joint
+  - caster_front_right_1_joint
+  - caster_front_right_2_joint
+  - suspension_left_joint
+  - suspension_right_joint
+position: [0.8398282308364908, -0.2697552429314761, -1.7603665118592093, 1.0485439793221247, -2.0677267392366407, 0.2029659545141282, -0.004091382287336132, 0.009887166243336026, 0.010428631672404558, 0.39385042648145774, -0.020875334658135125, 0.15988465869106264, 113.27269871190668, 116.08812441093312, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+velocity: [1.5957514353692803e-05, -4.8429518283024936e-05, -0.00040561983513844686, 7.035146350869031e-08, 2.220446049250313e-16, 0.0, 2.220446049250313e-16, 2.220446049250313e-16, 3.477375870213459e-05, -0.002638009566198037, 0.0009585643567094131, 2.220446049250313e-16, 2.220446049250313e-16, 2.220446049250313e-16, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+effort: [0.044, 1.312, 0.912, -0.451, 0.0, 0.0, 0.0, 0.015640273704789834, -0.05474095796676442, -0.02346041055718475, 0.10948191593352884, 1.292, nan, nan, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+---
+header: 
+  seq: 130640
+  stamp: 
+    secs: 1765453169
+    nsecs: 801179839
+  frame_id: ''
+name: 
+  - arm_1_joint
+  - arm_2_joint
+  - arm_3_joint
+  - arm_4_joint
+  - arm_5_joint
+  - arm_6_joint
+  - arm_7_joint
+  - gripper_left_finger_joint
+  - gripper_right_finger_joint
+  - head_1_joint
+  - head_2_joint
+  - torso_lift_joint
+  - wheel_left_joint
+  - wheel_right_joint
+  - caster_back_left_1_joint
+  - caster_back_left_2_joint
+  - caster_front_left_1_joint
+  - caster_front_left_2_joint
+  - caster_back_right_1_joint
+  - caster_back_right_2_joint
+  - caster_front_right_1_joint
+  - caster_front_right_2_joint
+  - suspension_left_joint
+  - suspension_right_joint
+position: [0.8398282308364908, -0.2697552429314761, -1.7603665118592093, 1.0485439793221247, -2.0677267392366407, 0.2029659545141282, -0.004091382287336132, 0.009887166243336026, 0.010428631672404558, 0.39385042648145774, -0.020875334658135125, 0.15988465869106264, 113.27269871190668, 116.08812441093312, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+velocity: [1.4401656704207754e-05, -4.370764025043e-05, -0.00036607190121244824, 6.349219581659301e-08, 2.220446049250313e-16, 0.0, 2.220446049250313e-16, 2.220446049250313e-16, 3.138331722867647e-05, -0.0023808036334937283, 0.0008651043319302452, 2.220446049250313e-16, 2.220446049250313e-16, 2.220446049250313e-16, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+effort: [0.035, 1.298, 0.915, -0.452, 0.0, 0.0, 0.0, 0.015640273704789834, -0.05474095796676442, -0.015640273704789834, 0.11730205278592376, 1.271, nan, nan, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+---
+header: 
+  seq: 130641
+  stamp: 
+    secs: 1765453169
+    nsecs: 820474750
+  frame_id: ''
+name: 
+  - arm_1_joint
+  - arm_2_joint
+  - arm_3_joint
+  - arm_4_joint
+  - arm_5_joint
+  - arm_6_joint
+  - arm_7_joint
+  - gripper_left_finger_joint
+  - gripper_right_finger_joint
+  - head_1_joint
+  - head_2_joint
+  - torso_lift_joint
+  - wheel_left_joint
+  - wheel_right_joint
+  - caster_back_left_1_joint
+  - caster_back_left_2_joint
+  - caster_front_left_1_joint
+  - caster_front_left_2_joint
+  - caster_back_right_1_joint
+  - caster_back_right_2_joint
+  - caster_front_right_1_joint
+  - caster_front_right_2_joint
+  - suspension_left_joint
+  - suspension_right_joint
+position: [0.8398282308364908, -0.2697552429314761, -1.7603665118592093, 1.0485439793221247, -2.0677267392366407, 0.2029659545141282, -0.004091382287336132, 0.009887166243336026, 0.010428631672404558, 0.39385042648145774, -0.02241122439989013, 0.15988465869106264, 113.27269871190668, 116.08812441093312, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+velocity: [1.2997495175547497e-05, -3.9446145326013066e-05, -0.00033037989084423454, 5.7301706724475186e-08, 2.220446049250313e-16, 0.0, 2.220446049250313e-16, 2.220446049250313e-16, 2.8323443798880508e-05, -0.0021486752792280895, -0.006933104354578173, 2.220446049250313e-16, 2.220446049250313e-16, 2.220446049250313e-16, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+effort: [0.03, 1.285, 0.903, -0.457, 0.0, 0.0, 0.0, 0.015640273704789834, -0.05474095796676442, -0.02346041055718475, 0.10948191593352884, 1.271, nan, nan, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+---
+header: 
+  seq: 130642
+  stamp: 
+    secs: 1765453169
+    nsecs: 840540041
+  frame_id: ''
+name: 
+  - arm_1_joint
+  - arm_2_joint
+  - arm_3_joint
+  - arm_4_joint
+  - arm_5_joint
+  - arm_6_joint
+  - arm_7_joint
+  - gripper_left_finger_joint
+  - gripper_right_finger_joint
+  - head_1_joint
+  - head_2_joint
+  - torso_lift_joint
+  - wheel_left_joint
+  - wheel_right_joint
+  - caster_back_left_1_joint
+  - caster_back_left_2_joint
+  - caster_front_left_1_joint
+  - caster_front_left_2_joint
+  - caster_back_right_1_joint
+  - caster_back_right_2_joint
+  - caster_front_right_1_joint
+  - caster_front_right_2_joint
+  - suspension_left_joint
+  - suspension_right_joint
+position: [0.8398282308364908, -0.2697552429314761, -1.7603665118592093, 1.0485439793221247, -2.0677267392366407, 0.2029659545141282, -0.004091382287336132, 0.009887166243336026, 0.010428631672404558, 0.39385042648145774, -0.02241122439989013, 0.15988465869106264, 113.27269871190668, 116.08812441093312, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+velocity: [1.1730239395931616e-05, -3.560014615672679e-05, -0.0002981678514869216, 5.171479031883885e-08, 2.220446049250313e-16, 0.0, 2.220446049250313e-16, 2.220446049250313e-16, 2.5561908028489657e-05, -0.0019391794395033505, -0.007597804794217407, 2.220446049250313e-16, 2.220446049250313e-16, 2.220446049250313e-16, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+effort: [0.032, 1.279, 0.892, -0.448, 0.0, 0.0, 0.0, 0.015640273704789834, -0.05474095796676442, -0.02346041055718475, 0.11730205278592376, 1.303, nan, nan, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+---
+^Cheader: 
+  seq: 130643
+  stamp: 
+    secs: 1765453169
+    nsecs: 860901946
+  frame_id: ''
+name: 
+  - arm_1_joint
+  - arm_2_joint
+  - arm_3_joint
+  - arm_4_joint
+  - arm_5_joint
+  - arm_6_joint
+  - arm_7_joint
+  - gripper_left_finger_joint
+  - gripper_right_finger_joint
+  - head_1_joint
+  - head_2_joint
+  - torso_lift_joint
+  - wheel_left_joint
+  - wheel_right_joint
+  - caster_back_left_1_joint
+  - caster_back_left_2_joint
+  - caster_front_left_1_joint
+  - caster_front_left_2_joint
+  - caster_back_right_1_joint
+  - caster_back_right_2_joint
+  - caster_front_right_1_joint
+  - caster_front_right_2_joint
+  - suspension_left_joint
+  - suspension_right_joint
+position: [0.8398282308364908, -0.2697552429314761, -1.7603665118592093, 1.0485439793221247, -2.0677267392366407, 0.2029659545141282, -0.004091382287336132, 0.009887166243336026, 0.010428631672404558, 0.39385042648145774, -0.020875334658135125, 0.15988465869106264, 113.27269871190668, 116.08812441093312, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+velocity: [1.0586541054828282e-05, -3.212913190644592e-05, -0.0002690964859669467, 4.667259826275206e-08, 2.220446049250313e-16, 0.0, 2.220446049250313e-16, 2.220446049250313e-16, 2.3069621995711916e-05, -0.0017501094441517736, 0.0004563622489391628, 2.220446049250313e-16, 2.220446049250313e-16, 2.220446049250313e-16, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+effort: [0.025, 1.28, 0.868, -0.457, 0.0, 0.0, 0.0, 0.015640273704789834, -0.05474095796676442, -0.015640273704789834, 0.10948191593352884, 1.292, nan, nan, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+
+
+
+
+Posicion brevia a todo, donde el brazo se va a levantar para preparanos para acercanos a coger el papel.
+^Crobotica_tiago@cab-Prestige-16-AI-Studio-B1VFG:~/carpeta_compartida/psico_ws$ rrun tf tf_echo map base_link
+At time 1765453211.992
+- Translation: [1.556, 0.647, 0.098]
+- Rotation: in Quaternion [0.000, 0.000, -0.256, 0.967]
+            in RPY (radian) [0.000, -0.000, -0.518]
+            in RPY (degree) [0.000, -0.000, -29.666]
+At time 1765453212.193
+- Translation: [1.556, 0.647, 0.098]
+- Rotation: in Quaternion [0.000, 0.000, -0.256, 0.967]
+            in RPY (radian) [0.000, -0.000, -0.518]
+            in RPY (degree) [0.000, -0.000, -29.666]
+^CAt time 1765453213.110
+- Translation: [1.556, 0.647, 0.098]
+- Rotation: in Quaternion [0.000, 0.000, -0.256, 0.967]
+            in RPY (radian) [0.000, -0.000, -0.518]
+            in RPY (degree) [0.000, -0.000, -29.666]
+
+
+entonces de aqui nos hacercamos a la posicion buena DESPACIO!!.
+
+Una vez llegamos a la posicion cerramos el gripper a 0.1.
+
+Rotamos el robot a esta posicion comoda: ompartida/psico_ws$ rosrun tf tf_echo map base_link
+At time 1765453303.350
+- Translation: [1.816, 0.513, 0.099]
+- Rotation: in Quaternion [0.000, 0.000, 0.370, 0.929]
+            in RPY (radian) [0.000, -0.000, 0.759]
+            in RPY (degree) [0.000, -0.000, 43.485]
+At time 1765453303.635
+- Translation: [1.816, 0.513, 0.098]
+- Rotation: in Quaternion [0.000, 0.000, 0.371, 0.929]
+            in RPY (radian) [0.000, -0.000, 0.759]
+            in RPY (degree) [0.000, -0.000, 43.501]
+
+y de aqui ya terminamos para que de comienzo a lo que es la prueba. 
+Hazme un script que sea coger papel que sea porfavor seguro y me gustaria que si hicera cntrl+c en el script que directamente mate la orden de movimiento al robot, por si hay algun accidente o algo, esto es de vital importancia
+
+
+
+
+
+
+
+
+
+
+
+robotica_tiago@cab-Prestige-16-AI-Studio-B1VFG:~/carpeta_compartida/psico_ws$ rosrun tf tf_echo map base_link
+At time 1765454015.790
+- Translation: [1.646, 0.585, 0.099]
+- Rotation: in Quaternion [0.000, 0.000, -0.193, 0.981]
+            in RPY (radian) [0.000, -0.000, -0.389]
+            in RPY (degree) [0.000, -0.000, -22.304]
+At time 1765454016.090
+- Translation: [1.646, 0.585, 0.099]
+- Rotation: in Quaternion [0.000, 0.000, -0.193, 0.981]
+            in RPY (radian) [0.000, -0.000, -0.389]
+            in RPY (degree) [0.000, -0.000, -22.304]
+^Crobotica_tiago@cab-Prestige-16-AI-Studio-B1VFG:~/carpeta_compartida/psico_ws$ 
+
+o tambien expresado como:
+robotica_tiago@cab-Prestige-16-AI-Studio-B1VFG:~/carpeta_compartida/psico_ws$ rosrun tf tf_echo map base_link
+At time 1765454015.790
+- Translation: [1.646, 0.585, 0.099]
+- Rotation: in Quaternion [0.000, 0.000, -0.193, 0.981]
+            in RPY (radian) [0.000, -0.000, -0.389]
+            in RPY (degree) [0.000, -0.000, -22.304]
+At time 1765454016.090
+- Translation: [1.646, 0.585, 0.099]
+- Rotation: in Quaternion [0.000, 0.000, -0.193, 0.981]
+            in RPY (radian) [0.000, -0.000, -0.389]
+            in RPY (degree) [0.000, -0.000, -22.304]
+^Crobotica_tiago@cab-Prestige-16-AI-Studio-B1VFG:~/carpeta_compartida/psico_ws$ rostopic echo -n 1 /robot_pose
+header: 
+  seq: 174357
+  stamp: 
+    secs: 1765454051
+    nsecs: 684928469
+  frame_id: "map"
+pose: 
+  pose: 
+    position: 
+      x: 1.643060720827577
+      y: 0.589980337939326
+      z: 0.0
+    orientation: 
+      x: 0.0
+      y: 0.0
+      z: -0.19464213198275995
+      w: 0.9808743244968775
+  covariance: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+---
+
+Y esta seria la posicion final, donde debe cerrar el gripper: ^Crobotica_tiago@cab-Prestige-16-AI-Studio-B1VFG:~/carpeta_compartida/psico_ws$ rrun tf tf_echo map base_link
+At time 1765454095.059
+- Translation: [1.831, 0.509, 0.098]
+- Rotation: in Quaternion [0.000, 0.000, -0.224, 0.975]
+            in RPY (radian) [0.000, -0.000, -0.452]
+            in RPY (degree) [0.000, -0.000, -25.895]
+At time 1765454095.459
+- Translation: [1.831, 0.509, 0.098]
+- Rotation: in Quaternion [0.000, 0.000, -0.224, 0.975]
+            in RPY (radian) [0.000, -0.000, -0.452]
+            in RPY (degree) [0.000, -0.000, -25.895]
+At time 1765454096.462
+- Translation: [1.831, 0.509, 0.098]
+- Rotation: in Quaternion [0.000, 0.000, -0.224, 0.975]
+            in RPY (radian) [0.000, -0.000, -0.452]
+            in RPY (degree) [0.000, -0.000, -25.895]
+
+o tambien expresado como:
+^Crobotica_tiago@cab-Prestige-16-AI-Studio-B1VFG:~/carpeta_compartida/psico_ws$ rtopic echo -n 1 /robot_pose
+header: 
+  seq: 178121
+  stamp: 
+    secs: 1765454126
+    nsecs: 964942485
+  frame_id: "map"
+pose: 
+  pose: 
+    position: 
+      x: 1.830982193105526
+      y: 0.5087620098931398
+      z: 0.0
+    orientation: 
+      x: 0.0
+      y: 0.0
+      z: -0.2240569599948348
+      w: 0.9745760507409738
+  covariance: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]
+---
+robotica_tiago@cab-Prestige-16-AI-Studio-B1VFG:~/carpeta_compartida/psico_ws$ 
+
+
+luego de la forma en la que estas cerrando el griper no funciona. en mi script que te he pasado tampoco funcionaba. la unica forma que he conseguido que funcione es haciendo: 
+rostopic pub -1 /gripper_controller/command trajectory_msgs/JointTrajectory "header:
+  frame_id: ''
+joint_names:
+- 'gripper_right_finger_joint'
+- 'gripper_left_finger_joint'
+points:
+- positions: [0.0, 0.0]
+  velocities: [0.0, 0.0]
+  accelerations: []
+  effort: []
+  time_from_start: {secs: 1, nsecs: 0}"
+  

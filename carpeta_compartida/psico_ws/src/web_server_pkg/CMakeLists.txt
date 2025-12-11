@@ -15,6 +15,9 @@ find_package(catkin REQUIRED COMPONENTS
   face_recognition_pkg
 )
 
+## <<< AÑADIR ESTA LÍNEA >>>
+catkin_python_setup()
+
 ###################################
 ## catkin specific configuration ##
 ###################################
@@ -55,8 +58,6 @@ catkin_install_python(
 )
 
 # Ficheros de recursos para Flask (plantillas, estáticos, datos)
-# Esto es sobre todo útil si en algún momento haces `catkin_make install`
-# En el devel space seguirás usando los de src/ sin problema.
 install(
   DIRECTORY
     src/web_server_pkg/templates
