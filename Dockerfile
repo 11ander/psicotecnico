@@ -42,6 +42,10 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     novnc \
     # X11
     xauth \
+    ros-noetic-web-video-server \
+    ros-noetic-move-base-msgs \
+    ros-noetic-map-server \
+    ros-noetic-teleop-twist-keyboard \
     && rm -rf /var/lib/apt/lists/*
 
 # ------------------------------------------------------------------
@@ -50,10 +54,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 # ------------------------------------------------------------------
 
 
-RUN pip install --no-cache-dir \
-    catkin_tools \
-    tensorboard \
-    opencv-python
 
 
 # ------------------------------------------------------------------
@@ -70,6 +70,8 @@ RUN mkdir -p /home/robotica_tiago/carpeta_compartida && \
 
 USER robotica_tiago
 WORKDIR /home/robotica_tiago
+
+
 
 # ------------------------------------------------------------------
 # 4) Entorno de ROS y entorno propio al abrir bash
