@@ -1,8 +1,0 @@
-Para que pal_iteraction_msgs funcione hay que instalarlo
-
-cd ~/catkin_ws/src
-git clone https://github.com/pal-robotics/pal_msgs.git
-rosdep install --from-paths . --ignore-src -r -y 
-cd ..
-catkin build
-source devel/setup.bash
