@@ -55,7 +55,7 @@ vision_pkg/
 
 ---
 
-## 📄 Descripción de archivos
+##  Descripción de archivos
 
 * **checkpoint_follower_api.py**  
   * API para gestionar el movimiento de la base mediante `move_base`.
