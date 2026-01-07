@@ -109,7 +109,7 @@ Este launch carga configs/rviz_configs.rviz, donde están preconfigurados el map
 El nodo checkpoint_follower.py envía objetivos a navegación y recorre una lista de checkpoints.
 
 Documentación detallada en:
-- [`mover_pkg/src/mover_pkg/README.md`](mover_pkg/src/mover_pkg/README.md)
+- [`src/mover_pkg/README.md`](src/mover_pkg/README.md)
 
 ### 4. Establecer la pose inicial del robot (`set_initial_pose.py`)
 El script `set_initial_pose.py` es un nodo auxiliar que permite **establecer automáticamente la pose inicial del robot** en el mapa.
@@ -133,7 +133,7 @@ Para pruebas internas y validación rápida del entorno, se incluye un script qu
 - checkpoint_follower.py
 
 Documentación detallada:
-- [`mover_pkg/scripts/README.md`](mover_pkg/scripts/README.md)
+- [`scripts/README.md`](scripts/README.md)
 
 ### 6. RViz para el panel admin del `web_server_pkg` (opcional)
 El script `run_rviz_web.sh` se utiliza para lanzar una instancia de **RViz** configurada específicamente para su uso junto al **panel de administración del `web_server_pkg`**.
