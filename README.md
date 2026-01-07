@@ -207,16 +207,32 @@ catkin build
 source devel/setup.bash
 ```
 
-### 4) ROS Master / roscore
+### 4) ROS Master / red
 
-El script de arranque comprueba que existe ROS Master accesible (con `rosnode list`).
-Asegúrate de tener **roscore** corriendo (en TIAGo o en una máquina de la red) **antes** de lanzar el stack.
+En el sistema TIAGo, el **ROS Master ya está levantado automáticamente en el propio robot**.  
+No es necesario (ni recomendable) lanzar `roscore` manualmente desde el PC o desde un contenedor.
 
-Ejemplo (si lo lanzas tú mismo en otra terminal del contenedor):
+Antes de ejecutar cualquier script o nodo, es obligatorio:
+- Conectarse al **ROS Master del TIAGo**.
+- Configurar correctamente las variables de entorno de red.
+
+Para ello, se debe ejecutar el script `setup_env.sh`, ajustando previamente la IP del dispositivo desde el que se lanza:
 
 ```bash
-roscore
+source setup_env.sh
 ```
+
+Este script configura:
+- ROS_MASTER_URI apuntando al TIAGo.
+- ROS_IP con la IP de la máquina local.
+
+Comprobación rápida:
+```bash
+echo $ROS_MASTER_URI
+echo $ROS_IP
+```
+
+Si la configuración es correcta, rosnode list debería mostrar los nodos activos del robot.
 
 ### 5) Levantar el stack completo (PC/Docker)
 
@@ -281,24 +297,31 @@ rosrun rpi_pkg estado_pulsador.py
 
 - `web_server_pkg`  
   Orquestador del sistema (Flask + clientes de acción). Gestiona UI, estado de sesión, histórico `history.csv`, y reporte PDF.
-
+  Documentación: [`carpeta_compartida/psico_ws/src/web_server_pkg/README.md`](carpeta_compartida/psico_ws/src/web_server_pkg/README.md)
+  
 - `face_recognition_pkg`  
   Reconocimiento facial (DeepFace + OpenCV) como Action Server para login.
+  Documentación: [`carpeta_compartida/psico_ws/src/face_recognition_pkg/README.md`](carpeta_compartida/psico_ws/src/face_recognition_pkg/README.md)
 
 - `audicion_pkg`  
   Prueba de audición (bips, reacción y conteo), integra TTS y el estado del pulsador de la Raspberry.
+  Documentación: [`carpeta_compartida/psico_ws/src/audicion_pkg/README.md`](carpeta_compartida/psico_ws/src/audicion_pkg/README.md)
 
 - `coordinacion_pkg`  
   Prueba de movilidad/marcha/postura (MediaPipe + cámara), genera métricas y nota.
+  Documentación: [`carpeta_compartida/psico_ws/src/coordinacion_pkg/README.md`](carpeta_compartida/psico_ws/src/coordinacion_pkg/README.md)
 
 - `vision_pkg`  
   Secuencia de prueba visual con navegación y brazo (mostrar cuaderno, tiempos de lectura, etc.).
+  Documentación: [`carpeta_compartida/psico_ws/src/vision_pkg/README.md`](carpeta_compartida/psico_ws/src/vision_pkg/README.md)
 
 - `mover_pkg`  
   Utilidades de navegación/visualización (mapas, RViz, helpers y checkpoints).
+  Documentación: [`carpeta_compartida/psico_ws/src/mover_pkg/README.md`](carpeta_compartida/psico_ws/src/mover_pkg/README.md)
 
 - `rpi_pkg` (Raspberry Pi)  
   Interfaz con GPIO para LEDs/pulsadores/buzzer/LCD y Action Servers para Memoria/Reflejos.
+  Documentación: [`carpeta_compartida/psico_ws/src/rpi_pkg/README.md`](carpeta_compartida/psico_ws/src/rpi_pkg/README.md)
 
 ---
 
@@ -330,7 +353,7 @@ rosrun rpi_pkg estado_pulsador.py
 ## Créditos y documentación adicional
 
 - Documentación extensa del hito: `Hito 2/README.md`
-- Readmes por paquete (si existen) dentro de cada `psico_ws/src/<paquete>/`
+- Readmes por paquete (si existen) dentro de cada `carpeta_compartida/psico_ws/src/<paquete>/`
 
 ---
 
