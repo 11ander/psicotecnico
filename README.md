@@ -302,6 +302,12 @@ rosrun rpi_pkg estado_pulsador.py
 
 ---
 
+## Demo (vídeo)
+
+[![Demo del sistema (YouTube)](https://img.youtube.com/vi/g4rVxneSf24/maxresdefault.jpg)](https://www.youtube.com/watch?v=g4rVxneSf24)
+
+---
+
 ## Troubleshooting rápido
 
 - **El script dice que no hay roscore**  
