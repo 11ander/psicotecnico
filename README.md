@@ -1054,15 +1054,20 @@ En resumen, esta estructura uniforme en todos los paquetes (audicion_pkg, vision
     
 ### Estructura Paquete rpi_pkg:
 ```text
-psico_ws/src/rpi_pkg/
+rpi_pkg/
 ├── action/
 │   ├── Memoria.action
 │   └── Reflejos.action
 ├── include/
-│   └─ rpi_pkg/
+│   └── rpi_pkg/
+        └── .gitkeep
 ├── launch/
+│   └── .gitkeep
+├── scripts/
+│   └── iniciar_rpi.sh
 ├── src/
 │   └── rpi_pkg/
+│       ├── .gitkeep
 │       ├── estado_pulsador.py
 │       ├── grove_rgb_lcd.py
 │       ├── memoria.py
