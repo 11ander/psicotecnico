@@ -352,7 +352,8 @@ rosrun rpi_pkg estado_pulsador.py
 
 ## Créditos y documentación adicional
 
-- Documentación extensa del hito: `Hito 2/README.md`
+- Documentación extensa del hito:
+  [`Hito 2/README.md`](Hito%202/README.md)
 - Readmes por paquete (si existen) dentro de cada `carpeta_compartida/psico_ws/src/<paquete>/`
 
 ---
